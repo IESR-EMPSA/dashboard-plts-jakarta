@@ -24,7 +24,7 @@ const valueLabel = (value: number | null) => value === null ? 'Tidak tersedia' :
 
 <template>
   <section id="analisis" class="analytics-section" aria-labelledby="analytics-title">
-    <header class="section-title-row"><div><span class="section-eyebrow">PERSPEKTIF DARI DATA</span><h2 id="analytics-title">Melihat potensi dari berbagai sisi.</h2></div><span class="scope-pill"><AppIcon name="chart" :size="15" />Ringkasan pemodelan</span></header>
+    <header class="section-title-row"><div><span class="section-eyebrow">PERSPEKTIF DARI DATA</span></div><span class="scope-pill"><AppIcon name="chart" :size="15" />Ringkasan pemodelan</span></header>
     <div class="analytics-grid">
       <article class="chart-card region-chart" data-testid="regional-chart">
         <header><div><h3>Di mana potensi terbesarnya?</h3><p>{{ filters.regionId ? 'Perbandingan kecamatan' : 'Perbandingan kabupaten / kota' }}</p></div><span class="chart-unit">{{ comparisonMetric === 'capacity_mwp' ? 'GWp' : 'TWh/tahun' }}</span></header>

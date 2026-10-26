@@ -19,8 +19,8 @@ defineEmits<{ close: [] }>()
         <div><dt>Hasil spesifik PVOUT</dt><dd>{{ numberId(building.pvout_1) }}<small v-if="building.pvout_1 !== null">kWh/kWp/tahun</small></dd></div>
         <div><dt>Estimasi listrik tahunan</dt><dd data-testid="building-generation">{{ numberId(building.annual_kwh) }}<small v-if="building.annual_kwh !== null">kWh/tahun</small></dd></div>
       </dl>
-      <p v-if="building.pvout_status === 'NoData'" class="coverage-warning"><AppIcon name="info" :size="16" />PVOUT belum tersedia. Kapasitas tetap dimodelkan; listrik tahunan tidak dianggap nol.</p>
-      <p class="detail-disclaimer">Estimasi berbasis pemodelan. Kelayakan struktur, bayangan, dan koneksi jaringan memerlukan kajian tapak.</p>
+      <p v-if="building.pvout_status === 'NoData'" class="coverage-warning"><AppIcon name="info" :size="16" />PVOUT belum tersedia</p>
+      <p class="detail-disclaimer">Estimasi berbasis pemodelan</p>
     </div>
   </aside>
 </template>

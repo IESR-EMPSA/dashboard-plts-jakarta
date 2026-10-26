@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Map as MapLibreMap, Marker, NavigationControl, ScaleControl } from 'maplibre-gl'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { FullscreenControl, Map as MapLibreMap, Marker, NavigationControl, ScaleControl } from 'maplibre-gl'
 import type { ExpressionSpecification, MapMouseEvent, StyleSpecification } from 'maplibre-gl'
 import type { Feature, MultiPolygon } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -9,23 +9,27 @@ import { copyBoundaryGeoJson } from '../../services/boundaryGeoJson.ts'
 import { adaptBuildingProperties } from '../../services/normalization.ts'
 import type { NormalizedBuildingProperties } from '../../types/dashboard.ts'
 import { numberId } from '../../utils/presentation.ts'
-import { BUILDING_MIN_ZOOM, BUILDING_SOURCE_LAYER, DEMO_LOCATIONS, METRIC_LABELS, buildingFilter, featureCenter, geometryBounds } from '../../map/mapModel.ts'
+import { BUILDING_MIN_ZOOM, BUILDING_SOURCE_LAYER, METRIC_LABELS, buildingFilter, collectionBounds, featureCenter, geometryBounds } from '../../map/mapModel.ts'
 import type { MapMetric } from '../../map/mapModel.ts'
 import { buildingArchiveUrl, prepareMapRuntime } from '../../map/protocol.ts'
-import { loadBasemap, neutralStyle } from '../../map/basemap.ts'
+import { GOOGLE_IMAGERY_LAYER, GOOGLE_IMAGERY_SOURCE, googleImagerySource, loadBasemap, neutralStyle } from '../../map/basemap.ts'
+import type { BasemapId } from '../../map/basemap.ts'
 import AppIcon from '../AppIcon.vue'
 
 const props = defineProps<{ selectedId: string | null; scope: string }>()
 const emit = defineEmits<{ select: [building: Readonly<NormalizedBuildingProperties> | null] }>()
 const dashboard = useDashboard()
 const { data, filters, boundaries } = dashboard
+const panel = ref<HTMLElement | null>(null)
 const container = ref<HTMLDivElement | null>(null)
 const metric = ref<MapMetric>('capacity_mwp')
-const buildingsVisible = ref(true), boundariesVisible = ref(true), districtLinesVisible = ref(false), choroplethVisible = ref(true), baseVisible = ref(true)
+const buildingsVisible = ref(true), boundariesVisible = ref(true), districtLinesVisible = ref(false), choroplethVisible = ref(true)
+const basemap = ref<BasemapId>('openfreemap'), imageryUnavailable = ref(false)
 const busy = ref(true), ready = ref(false), baseUnavailable = ref(false), mapError = ref<string | null>(null), zoom = ref(10.7)
 const emptyView = ref(false)
 const tooltip = ref<{ x: number; y: number; title: string; detail: string } | null>(null)
 let map: MapLibreMap | undefined, disposed = false, hoveredId: string | number | null = null
+let viewingFullExtent = true
 let baseLayers: string[] = [], baseSources = new Set<string>()
 const markers: Marker[] = []
 let resizeObserver: ResizeObserver | undefined
@@ -34,6 +38,16 @@ const activeRows = computed(() => !data.value ? [] : filters.regionId ? data.val
 const metricMax = computed(() => Math.max(0.000001, ...activeRows.value.map(row => row[metric.value] ?? 0)))
 const metricUnit = computed(() => metric.value === 'capacity_mwp' ? 'MWp' : metric.value === 'annual_gwh' ? 'GWh/tahun' : '%')
 const legendNumber = (n: number) => numberId(metric.value === 'eligibility_rate' ? n * 100 : n, metric.value === 'eligibility_rate' ? 1 : 0)
+const basemapNotice = computed(() => {
+  if (basemap.value === 'google-imagery' && !imageryUnavailable.value) return null
+  if (basemap.value === 'google-imagery') return baseUnavailable.value
+    ? 'Peta dasar eksternal tidak tersedia. Layer penelitian tetap aktif.'
+    : 'Imagery Google tidak tersedia. Menggunakan OpenFreeMap.'
+  return baseUnavailable.value ? 'OpenFreeMap tidak tersedia. Layer penelitian tetap aktif.' : null
+})
+
+function fullExtent() { return collectionBounds((boundaries.region.data.value?.features ?? []).map(f => f.geometry)) }
+function extentPadding() { return { top: 32, right: 32, bottom: 100, left: 32 } }
 
 function setFeature(id: string | number | null, state: Record<string, boolean>) {
   if (id !== null && map?.getSource('solar-buildings')) map.setFeatureState({ source: 'solar-buildings', sourceLayer: BUILDING_SOURCE_LAYER, id }, state)
@@ -44,25 +58,12 @@ function focusSelection() {
   const collection = filters.districtId ? boundaries.district.data.value : boundaries.region.data.value
   const id = filters.districtId || filters.regionId
   const feature = collection?.features.find(f => f.id === id)
-  if (feature) map.fitBounds(geometryBounds(feature.geometry), { padding: 58, maxZoom: 16, duration: duration() })
+  if (feature) { viewingFullExtent = false; map.fitBounds(geometryBounds(feature.geometry), { padding: 58, maxZoom: 16, bearing: 0, pitch: 0, duration: duration() }) }
 }
 function resetView() {
   if (!map) return
-  const features = boundaries.region.data.value?.features ?? []
-  if (features.length) {
-    const bounds = features.map(f => geometryBounds(f.geometry))
-    map.fitBounds([[Math.min(...bounds.map(b => b[0][0])), Math.min(...bounds.map(b => b[0][1]))],
-      [Math.max(...bounds.map(b => b[1][0])), Math.max(...bounds.map(b => b[1][1]))]], { padding: 48, duration: duration() })
-  }
-}
-async function goToExample(kind: keyof typeof DEMO_LOCATIONS) {
-  if (!data.value || !map) return
-  const place = DEMO_LOCATIONS[kind]
-  const region = data.value.regions.regions.find(r => r.wilayah === place.region)!
-  const district = data.value.districts.districts.find(d => d.region_id === region.id && d.kecamatan === place.district)!
-  dashboard.setBuildingType(null); dashboard.setRegion(region.id); dashboard.setDistrict(district.id)
-  await nextTick()
-  map.stop(); map.easeTo({ center: place.center, zoom: 16.3, duration: duration() })
+  const bounds = fullExtent()
+  if (bounds) { viewingFullExtent = true; map.fitBounds(bounds, { padding: extentPadding(), bearing: 0, pitch: 0, duration: duration() }) }
 }
 function inspectCenter() {
   if (!map || !ready.value || zoom.value < BUILDING_MIN_ZOOM) return
@@ -81,7 +82,9 @@ function updateAppearance() {
   for (const id of ['solar-building-fill', 'solar-building-outline']) {
     if (map.getLayer(id)) { map.setFilter(id, filter); map.setLayoutProperty(id, 'visibility', buildingsVisible.value ? 'visible' : 'none') }
   }
-  for (const id of baseLayers) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', baseVisible.value ? 'visible' : 'none')
+  const imageryActive = basemap.value === 'google-imagery' && !imageryUnavailable.value
+  for (const id of baseLayers) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', !imageryActive && !baseUnavailable.value ? 'visible' : 'none')
+  map.setLayoutProperty(GOOGLE_IMAGERY_LAYER, 'visibility', imageryActive ? 'visible' : 'none')
   for (const id of ['solar-region-line', 'solar-region-selected', 'solar-district-selected']) map.setLayoutProperty(id, 'visibility', boundariesVisible.value ? 'visible' : 'none')
   map.setLayoutProperty('solar-district-line', 'visibility', boundariesVisible.value && (districtLinesVisible.value || filters.regionId) ? 'visible' : 'none')
   map.setFilter('solar-region-selected', ['==', ['get', 'id'], filters.regionId ?? ''])
@@ -129,23 +132,29 @@ async function initialize() {
   const [base, regionOk, districtOk] = await Promise.all([loadBasemap(), dashboard.loadBoundaries('region'), dashboard.loadBoundaries('district')])
   if (disposed || !container.value) return
   if (!regionOk || !districtOk || !data.value) { busy.value = false; mapError.value = 'Batas wilayah belum dapat dimuat. Muat ulang data untuk mencoba lagi.'; return }
-  baseUnavailable.value = base.fallback; baseVisible.value = !base.fallback
+  baseUnavailable.value = base.fallback
   baseLayers = base.style.layers.map(l => l.id).filter(id => id !== 'solar-background')
   baseSources = new Set(Object.keys(base.style.sources))
-  const style: StyleSpecification = { ...base.style, layers: [...neutralStyle().layers, ...base.style.layers.filter(l => l.id !== 'solar-background')] }
-  map = new MapLibreMap({ container: container.value, style, center: [106.84, -6.18], zoom: 10.7,
-    minZoom: 7, maxZoom: 20, maxBounds: [[106.15, -6.65], [107.2, -4.95]], renderWorldCopies: false,
+  const style: StyleSpecification = { ...base.style, sources: { ...base.style.sources, [GOOGLE_IMAGERY_SOURCE]: googleImagerySource() },
+    layers: [...neutralStyle().layers, ...base.style.layers.filter(l => l.id !== 'solar-background'),
+      { id: GOOGLE_IMAGERY_LAYER, type: 'raster', source: GOOGLE_IMAGERY_SOURCE, layout: { visibility: 'none' } }] }
+  map = new MapLibreMap({ container: container.value, style, bounds: fullExtent()!, fitBoundsOptions: { padding: extentPadding() },
+    minZoom: 5, maxZoom: 20, renderWorldCopies: false,
+    locale: { 'FullscreenControl.Enter': 'Tampilkan peta layar penuh', 'FullscreenControl.Exit': 'Keluar dari layar penuh' },
     attributionControl: { compact: false }, canvasContextAttributes: { preserveDrawingBuffer: true } })
   map.getCanvas().setAttribute('aria-label', 'Peta interaktif potensi surya atap DKI Jakarta')
   map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+  map.addControl(new FullscreenControl({ container: panel.value! }), 'top-right')
   map.addControl(new ScaleControl({ maxWidth: 90, unit: 'metric' }), 'bottom-right')
   map.on('error', event => {
     const source = 'sourceId' in event ? String(event.sourceId) : ''
     const message = event.error?.message ?? 'Peta tidak dapat dimuat'
-    if (baseSources.has(source) || /openfreemap\.org/.test(message)) { baseUnavailable.value = true; baseVisible.value = false; return }
+    if (source === GOOGLE_IMAGERY_SOURCE || /mt0\.google\.com/.test(message)) { imageryUnavailable.value = true; return }
+    if (baseSources.has(source) || /openfreemap\.org/.test(message)) { baseUnavailable.value = true; return }
     mapError.value = message; console.error('Solar map error', event.error)
   })
   map.on('zoom', () => { zoom.value = map!.getZoom(); for (const marker of markers) marker.getElement().style.display = zoom.value < 13 ? '' : 'none' })
+  map.on('movestart', event => { if (event.originalEvent) viewingFullExtent = false })
   map.on('mousemove', handleMove); map.on('click', handleClick); map.on('mouseout', clearHover)
   map.on('idle', () => {
     emptyView.value = Boolean(ready.value && buildingsVisible.value && zoom.value >= BUILDING_MIN_ZOOM && map?.getLayer('solar-building-fill')
@@ -187,31 +196,32 @@ async function initialize() {
     ready.value = true; busy.value = false; updateAppearance(); focusSelection()
     if (import.meta.env.DEV) window.__SOLAR_MAP__ = map
   })
-  resizeObserver = new ResizeObserver(() => map?.resize()); resizeObserver.observe(container.value)
+  // Retain the full administrative extent through fullscreen/responsive resizes,
+  // while preserving detail views after the user navigates the map.
+  resizeObserver = new ResizeObserver(() => { map?.resize(); if (viewingFullExtent) resetView() }); resizeObserver.observe(container.value)
 }
 
-watch([metric, buildingsVisible, boundariesVisible, districtLinesVisible, choroplethVisible, baseVisible, () => filters.regionId, () => filters.districtId, () => filters.typeId], updateAppearance)
+watch([metric, buildingsVisible, boundariesVisible, districtLinesVisible, choroplethVisible, basemap, baseUnavailable, imageryUnavailable, () => filters.regionId, () => filters.districtId, () => filters.typeId], updateAppearance)
 watch(() => [filters.regionId, filters.districtId], () => { emit('select', null); clearHover(); filters.regionId ? focusSelection() : resetView() })
 watch(() => filters.typeId, () => { emit('select', null); clearHover() })
 watch(() => props.selectedId, (id, previous) => { setFeature(previous, { selected: false }); setFeature(id, { selected: true }) })
 onMounted(() => { void initialize().catch(error => { busy.value = false; mapError.value = error instanceof Error ? error.message : 'Peta gagal dimuat'; console.error('Map initialization failed', error) }) })
 onBeforeUnmount(() => { disposed = true; resizeObserver?.disconnect(); markers.forEach(m => m.remove()); if (import.meta.env.DEV) delete window.__SOLAR_MAP__; map?.remove() })
-defineExpose({ resetView, goToExample })
+defineExpose({ resetView })
 declare global { interface Window { __SOLAR_MAP__?: MapLibreMap } }
 </script>
 
 <template>
-  <section class="map-panel" aria-label="Peta potensi surya">
+  <section ref="panel" class="map-panel" aria-label="Peta potensi surya" :class="{ 'imagery-basemap': basemap === 'google-imagery' && !imageryUnavailable }">
     <header class="map-panel-header"><div class="map-title"><AppIcon name="globe" :size="18" /><strong>Peta potensi</strong><span class="map-scope">{{ scope }}</span></div>
       <div class="map-toolbar"><details class="layer-menu"><summary class="button button-quiet"><AppIcon name="layers" :size="16" /> Layer</summary><div class="layer-popover">
         <strong>Tampilan peta</strong><label><input v-model="buildingsVisible" type="checkbox"> Bangunan layak <small>zoom 14+</small></label><label><input v-model="choroplethVisible" type="checkbox"> Choropleth wilayah</label><label><input v-model="boundariesVisible" type="checkbox"> Batas wilayah</label><label><input v-model="districtLinesVisible" type="checkbox"> Seluruh batas kecamatan</label>
-        <div class="filter-divider" /><span class="field-label">Peta dasar</span><div class="segmented"><button :aria-pressed="baseVisible" :disabled="baseUnavailable" @click="baseVisible = true">Terang</button><button :aria-pressed="!baseVisible" @click="baseVisible = false">Netral</button></div>
-      </div></details><button class="icon-button" title="Tampilkan seluruh DKI Jakarta" aria-label="Tampilkan seluruh DKI Jakarta" @click="resetView"><AppIcon name="expand" :size="18" /></button></div>
+        <div class="filter-divider" /><span class="field-label">Peta dasar</span><div class="segmented basemap-options" role="group" aria-label="Pilih peta dasar"><button :aria-pressed="basemap === 'openfreemap'" data-testid="basemap-openfreemap" @click="basemap = 'openfreemap'">OpenFreeMap</button><button :aria-pressed="basemap === 'google-imagery'" data-testid="basemap-google" @click="basemap = 'google-imagery'">Google Imagery</button></div>
+      </div></details><button class="icon-button" data-testid="map-extent" title="Tampilkan seluruh DKI Jakarta" aria-label="Tampilkan seluruh DKI Jakarta" @click="resetView"><AppIcon name="extent" :size="18" /></button></div>
     </header>
     <div class="map-viewport">
       <div ref="container" class="map-canvas" data-testid="solar-map" />
-      <div class="example-locations"><span>JELAJAH CEPAT</span><button data-testid="urban-example" :disabled="!ready" @click="goToExample('urban')"><span class="tiny-dot" />Cengkareng</button><button data-testid="island-example" :disabled="!ready" @click="goToExample('islands')"><span class="tiny-dot amber" />Pulau Tidung</button></div>
-      <div v-if="baseUnavailable" class="basemap-notice" role="status">Peta dasar eksternal tidak tersedia. Layer penelitian tetap aktif.</div>
+      <div v-if="basemapNotice" class="basemap-notice" role="status">{{ basemapNotice }}</div>
       <div v-if="mapError" class="map-error" role="alert"><AppIcon name="info" :size="17" />{{ mapError }}</div>
       <div v-else-if="emptyView && !busy" class="map-empty" role="status">Belum ada bangunan sesuai filter pada tampilan ini. Geser peta atau ubah filter.</div>
       <div v-if="!ready && busy" class="map-loading"><span class="spinner" /><strong>Menyiapkan peta Jakarta…</strong><span>Memuat batas wilayah dan lapisan penelitian</span></div>

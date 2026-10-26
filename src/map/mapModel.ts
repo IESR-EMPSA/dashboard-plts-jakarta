@@ -30,13 +30,12 @@ export function geometryBounds(geometry: MultiPolygon | { readonly type: 'MultiP
   }
   return [[west, south], [east, north]]
 }
-export function tileCenter(x: number, y: number, z = 16): [number, number] {
-  return [x / 2 ** z * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * y / 2 ** z))) * 180 / Math.PI]
+export function collectionBounds(geometries: readonly Parameters<typeof geometryBounds>[0][]): [[number, number], [number, number]] | null {
+  if (!geometries.length) return null
+  const bounds = geometries.map(geometryBounds)
+  return [[Math.min(...bounds.map(b => b[0][0])), Math.min(...bounds.map(b => b[0][1]))],
+    [Math.max(...bounds.map(b => b[1][0])), Math.max(...bounds.map(b => b[1][1]))]]
 }
-export const DEMO_LOCATIONS = {
-  urban: { label: 'Cengkareng', region: 'Jakarta Barat', district: 'Cengkareng', center: tileCenter(52200.5, 33888.5) },
-  islands: { label: 'Pulau Tidung', region: 'Kepulauan Seribu', district: 'Kepulauan Seribu Selatan', center: tileCenter(52155.03, 33824.94) },
-} as const
 
 export function featureCenter(feature: Feature<MultiPolygon>): Position {
   const [a, b] = geometryBounds(feature.geometry)

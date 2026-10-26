@@ -88,7 +88,9 @@ Conversion is complete: 790,567,834 bytes (753.9442386627197 MiB), PMTiles v3; s
 
 ## Basemap and local behavior
 
-OpenFreeMap Positron is the no-key light basemap, with provider attribution retained. If the style cannot load, or a provider source fails, the UI visibly switches to a neutral background while local boundaries/PMTiles continue working. Controls toggle basemap, buildings, choropleth, administrative outlines and district outlines. This is an external read-only basemap dependency; no data is uploaded. See [OpenFreeMap quick start](https://openfreemap.org/quick_start/).
+OpenFreeMap Positron and the user-specified Google satellite XYZ endpoint are the two selectable basemaps. Google requests use HTTPS (`https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}`) and a raster layer below research overlays. Switching toggles basemap visibility without replacing the style or resetting filters/selection. Provider attribution stays visible; a failed Google layer falls back to OpenFreeMap, and unavailable OpenFreeMap falls back to a neutral background. The neutral background is not a third menu choice. These are external read-only dependencies; no data is uploaded. See [OpenFreeMap quick start](https://openfreemap.org/quick_start/) and [Google attribution guidance](https://developers.google.com/maps/documentation/tile/policies).
+
+The native MapLibre FullscreenControl targets the whole map panel, retaining controls/legend/details. Initial/reset extent comes from all six administrative MultiPolygons. A hardcoded maxBounds was removed because its aspect constraint clipped north/south DKI during fitBounds. Full-extent views refit on resize/fullscreen; manually navigated detail views retain their camera. Demo location controls are removed; representative locations live only in the browser QA helper.
 
 Vite watches application sources but excludes raw/processed archives, QA Chrome profiles and local tools; otherwise Windows can crash its watcher on the browser’s locked Cookies file. The server binds localhost on strict port 5173.
 

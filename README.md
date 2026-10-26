@@ -6,7 +6,7 @@ A Vue 3 + TypeScript research dashboard for modeled rooftop PV potential in DKI 
 pnpm.cmd dev
 ```
 
-Open **http://localhost:5173/**. The existing validated archive must be at `data/processed/buildings_eligible_dki.pmtiles` (ignored by Git). Vite serves bounded HTTP Range requests locally; it never copies the archive into public assets. Use **Cengkareng** or **Pulau Tidung** to explore real buildings.
+Open **http://localhost:5173/**. The existing validated archive must be at `data/processed/buildings_eligible_dki.pmtiles` (ignored by Git). Vite serves bounded HTTP Range requests locally; it never copies the archive into public assets. Choose a region and district, then zoom to level 14 or higher to inspect real buildings. The initial view and extent button include all DKI, including Kepulauan Seribu; the map supports fullscreen and OpenFreeMap/Google Imagery basemaps.
 
 ```powershell
 pnpm.cmd data:check

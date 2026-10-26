@@ -60,8 +60,16 @@ Normalize raw useable_m2, category labels and missing energy, preserve string bu
 
 Methodology, attribution, responsive/accessibility/failure states and agreed device/network performance budgets. Run validation/tests/typechecks/build; add lint only deliberately. Confirm source-model/topology/assignment QA, vintage, licenses, cloud costs and compatible data versions. Upload and deployment need explicit approval.
 
+## Follow-up — visual cleanup and map controls
+
+Implemented the user's screenshot-based removals, corrected full-DKI extent (including northern islands and southern mainland), added native fullscreen with resize-safe extent, and replaced light/neutral buttons with OpenFreeMap/Google Imagery. Google uses the supplied XYZ endpoint over HTTPS; attribution and provider fallbacks are retained. No data/archive/dependency changes.
+
+Verification: 48 tests (all previous 47 plus the actual six-region extent invariant), data freshness, TypeScript and production build pass. Updated actual-app QA checks real imagery responses, native fullscreen and full bounds on desktop/mobile/landscape, alongside all prior KPI/filter/building tests. Artifacts are in ignored data/processed/qa/ui-refinement; see LOCAL_DEMO.md.
+
 ## Handoff
 
-See DATA_STAGE_REPORT.md for stage 1, FRONTEND_DATA_LAYER.md for milestone 2 and LOCAL_DEMO.md for the actual local application. Start with `pnpm.cmd dev`; use Cengkareng and Pulau Tidung quick navigation to inspect real footprints. The local demo is the approved stopping point.
+Viewport-layout follow-up: the user reported that the map required page scrolling to see its top/bottom. The overview now fits the desktop viewport, with independently scrollable filters and charts below. Browser checks pass at 1440×900, 1366×768, 1280×720, 1280×600 and 1920×1080 with pageScroll=0 and both map edges visible, including unsupported-filter notices and return navigation. Mobile/fullscreen/imagery and all existing 48 tests also pass. Latest evidence: data/processed/qa/viewport-layout/app-report.json.
+
+See DATA_STAGE_REPORT.md for stage 1, FRONTEND_DATA_LAYER.md for milestone 2 and LOCAL_DEMO.md for the actual local application. Start with `pnpm.cmd dev`; select a region/district and zoom to z14+ to inspect real footprints. The extent button fits every DKI region; fullscreen and OpenFreeMap/Google Imagery are available. The local demo is the approved stopping point.
 
 Next work requires an agreed release scope: original model/topology/vintage/rights review, physical device and accessibility checks, measured network/GPU performance, then separately authorized storage/deployment. R2 remains preferred but unconfigured. Exact administrative × type statistics require a new all-building-source aggregate. No archives or publication statistics were regenerated or altered; nothing was uploaded, deployed, committed or pushed.

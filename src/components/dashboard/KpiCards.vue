@@ -13,7 +13,7 @@ const cards = computed(() => [
   { key: 'capacity', icon: 'sun', label: 'Potensi kapasitas surya', value: kpis.value ? numberId(mwpToGwp(kpis.value.capacity_mwp)) : '—', unit: 'GWp',
     note: kpis.value ? `${numberId(kpis.value.capacity_mwp, 3)} MWp kapasitas potensial` : 'Statistik tidak tersedia', accent: 'orange' },
   { key: 'generation', icon: 'bolt', label: 'Estimasi listrik tahunan', value: kpis.value ? kpis.value.annual_gwh === null ? 'Tidak tersedia' : numberId(gwhToTwh(kpis.value.annual_gwh)) : '—', unit: 'TWh/tahun',
-    note: 'Hanya bangunan dengan PVOUT', accent: 'blue' },
+    note: 'Bangunan dengan PVOUT', accent: 'blue' },
   { key: 'eligibility', icon: 'chart', label: 'Tingkat kelayakan', value: kpis.value ? numberId(ratioToPercent(kpis.value.eligibility_rate)) : '—', unit: '%',
     note: kpis.value ? `Dari ${numberId(kpis.value.total_buildings, 0)} bangunan dianalisis` : 'Menggunakan seluruh populasi bangunan', accent: 'teal' },
 ])

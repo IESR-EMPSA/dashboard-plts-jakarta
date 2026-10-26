@@ -3,7 +3,7 @@ import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { archiveMiddleware, MAX_RANGE_BYTES, parseByteRange } from '../scripts/dev/pmtilesPlugin.ts'
-import { buildingFilter, geometryBounds, POLYGON_FILTER, BUILDING_SOURCE_LAYER } from '../src/map/mapModel.ts'
+import { buildingFilter, collectionBounds, geometryBounds, POLYGON_FILTER, BUILDING_SOURCE_LAYER } from '../src/map/mapModel.ts'
 import { createSolarDataService } from '../src/services/solarDataService.ts'
 import { numberId } from '../src/utils/presentation.ts'
 
@@ -35,6 +35,17 @@ test('type aliases are included in map filters independently of unsupported join
 })
 test('navigation bounds include all outer and island polygons', () => {
   assert.deepEqual(geometryBounds({ type: 'MultiPolygon', coordinates: [[[[106,-6],[107,-6],[107,-5],[106,-6]]],[[[105,-4],[105.5,-4],[105,-3],[105,-4]]]] }), [[105,-6],[107,-3]])
+})
+test('full DKI extent covers every real administrative polygon including northern islands and southern mainland', async () => {
+  const regions = await service.loadBoundaries('region')
+  const bounds = collectionBounds(regions.features.map(f => f.geometry))!
+  assert.equal(regions.features.length, 6)
+  assert(bounds[0][0] <= 106.391 && bounds[1][0] >= 106.973)
+  assert(bounds[0][1] <= -6.3726 && bounds[1][1] >= -5.203)
+  for (const feature of regions.features) for (const polygon of feature.geometry.coordinates) for (const ring of polygon) for (const [lng, lat] of ring) {
+    assert(lng! >= bounds[0][0] && lng! <= bounds[1][0] && lat! >= bounds[0][1] && lat! <= bounds[1][1])
+  }
+  assert.equal(collectionBounds([]), null)
 })
 test('display uses Indonesian numbers and preserves unavailable values', () => {
   assert.equal(numberId(1470399, 0), '1.470.399')

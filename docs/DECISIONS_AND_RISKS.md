@@ -13,7 +13,7 @@
 
 - Official `pmtiles` 4.5.0 is the sole added application dependency. Vue state/data services are reused; charts use native HTML/SVG.
 - Local development serves the fixed ignored archive with Vite-only bounded HTTP Range/206 middleware. It does not create a deployed backend or copy the archive to public assets.
-- OpenFreeMap Positron supplies a no-key light basemap with its attribution. A neutral local background is a tested fallback; the app remains useful without that external provider.
+- Basemap choices are OpenFreeMap Positron and Google Imagery via the user's HTTPS XYZ endpoint. Both retain provider attribution; the neutral background is an automatic fallback. Basemap switches preserve research layers and filter state. No key/API session or new dependency was introduced.
 - The WebGL component loads asynchronously; the main data/dashboard bundle stays smaller. Large MapLibre/worker chunks and 9.52 MB of unsimplified administrative GeoJSON still need production network/device budgeting.
 - Mobile refinement uses inline filters and a scrollable detail sheet; a drawer and a full accessibility audit are deferred.
 - The current approval ends at a verified local demo. It does not authorize uploads, deployment, commits or pushes.
@@ -47,6 +47,7 @@
 - Dataset versions must be pinned together. A new PMTiles alone without recomputing JSON creates inconsistent dashboard results.
 
 ## Change log
+- 2026-10-26: User-requested visual cleanup and map refinement: specified decorative/text elements removed; full-DKI extent corrected by removing the restrictive camera bounds; native fullscreen and Google Imagery added. All 48 tests, typechecks/build, data freshness and updated desktop/mobile/landscape browser checks pass. No production data/archive modifications or publication actions.
 - 2026-10-26: Expanded milestone 3 local demo completed: official PMTiles protocol, local Range/206, geometry-safe map, administrative filters/choropleths, KPI/chart scopes, real building details and responsive UI. All 47 tests, typechecks, data freshness, production build and actual-app Chrome regression pass. Raw/public data and archives remain unchanged; no upload/deployment/commit/push. See LOCAL_DEMO.md.
 - 2026-10-26: Initial Codex context pack drafted from project discussion, awaiting repo and exported-data validation.
 - 2026-10-26: Read-only audit reconciled actual summary totals and all administrative joins; inspected real MBTiles and identified schema/geometry differences. Original model/source/license QA remains pending.
