@@ -41,6 +41,7 @@ Deliver an interactive research WebGIS for exploring **modeled rooftop photovolt
 - Selecting a kab/kota excludes districts outside the selection, and district choice resets if user changes parent.
 
 ### Building map
+- The requested next building-tile zoom range is **13–18**. This is the target for the next archive/viewer update; the existing z14–16 archive and QA remain the verified baseline until that update is validated.
 - Never request all building polygons as one GeoJSON.
 - MapLibre will load PMTiles MVT via HTTP Range requests. R2 is the preferred storage candidate, pending confirmation; no remote endpoint is verified. Local archive preparation precedes application integration.
 - At low zoom display admin choropleth. Enable individual footprints at a tested higher zoom; exact thresholds based on performance testing.

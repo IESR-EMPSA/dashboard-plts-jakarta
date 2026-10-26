@@ -4,6 +4,8 @@ The approved local demo is implemented in the existing Vue project. This stage i
 
 ## Run and explore
 
+The requested next building-tile zoom range is **13–18**. The archive/viewer update is pending. The usage and QA observations below describe the currently validated implementation; rerun them after replacing the archive and aligning zoom settings.
+
 ```powershell
 pnpm.cmd dev
 # Open http://localhost:5173/
@@ -64,7 +66,7 @@ Type-only KPIs are supported across DKI. Administrative × type intersections ar
 | `package.json`, `pnpm-lock.yaml` | Sole new application dependency: official PMTiles client |
 | `README.md`, `AGENTS.md`, `START_HERE.md`, implementation/architecture/design/product/decision docs | Current setup, approved boundary, evidence and remaining gates |
 
-Milestone 2 types, data services/selectors/store/composable and the original 41 tests are retained. Raw data, generated publication bytes, crosswalk sources, modeling scripts and both archives are preserved. Starter HelloWorld/assets may remain unused; the project/tooling was not replaced.
+Milestone 2 types, data services/selectors/store/composable and the original 41 tests are retained. Raw data, generated publication bytes, crosswalk sources, modeling scripts and both archives are preserved. The subsequent repository screening removes the unused HelloWorld component and its starter assets; see PROJECT_REVIEW.md. The project/tooling was not replaced.
 
 ## Verification and evidence
 

@@ -24,7 +24,7 @@ Before planning or editing, read in this order:
 - Never insert storage tokens/access keys or any secret into client code. `VITE_*` may contain public URLs only. Keep raw and processed archives outside `public/` and Git; never modify `data/raw/`.
 - Treat filenames, URL paths, internal PMTiles source-layer names, available admin geometries, and library APIs as **to be verified**; do not invent them.
 - Use explicit administrative/type crosswalks. Raw `useable_m2` maps to normalized `usable_m2`; omitted tile energy means null. See the data contract for actual schemas.
-- Current MBTiles: `buildings_eligible_pvout`, z14–16; type-0 instances require QA. Conversion is not geometry repair. Respect publication rights and attribution.
+- Current validated MBTiles: `buildings_eligible_pvout`, z14–16. The requested next tile zoom range is 13–18, pending archive/viewer updates and QA; never relabel historical archive evidence as if the update were complete. Type-0 instances require QA. Conversion is not geometry repair. Respect publication rights and attribution.
 
 ## Engineering behavior
 - Before each phase: inspect current files, summarize changes and any blockers, and propose a small plan.

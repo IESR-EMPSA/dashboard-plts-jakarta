@@ -137,6 +137,9 @@ try {
   await screenshot('01-overview')
   console.log(JSON.stringify({ progress: 'initial', ...checks.initial }))
   checks.initialFullDkiExtent = await checkFullExtent('Initial extent')
+  const brokenLabels = await evaluate(`[...document.querySelectorAll('[aria-labelledby]')].flatMap(e=>e.getAttribute('aria-labelledby').split(/\\s+/).filter(id=>!document.getElementById(id)))`)
+  assert.deepEqual(brokenLabels, [], 'Accessible labels must reference existing elements')
+  checks.accessibleLabelReferences = true
   assert(await evaluate(`!document.querySelector('.example-locations,.scope-row,.technical-caption,.closing-note,.app-footer .text-button')`))
   assert(!(await evaluate(`document.querySelector('main').innerText`)).includes('RISET ENERGI'))
   checks.requestedElementsRemoved = true

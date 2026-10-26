@@ -16,7 +16,7 @@ Complete only approved work, sequentially. Stage 1 Tasks A → B → C → D are
 | 4 — Administrative boundaries/filters/choropleth | Complete within expanded milestone 3 | 6/44 real selectors, resets, fit/highlight, null-aware capacity/energy/eligibility choropleth and legends. |
 | 5 — KPIs and analytical charts | Complete within expanded milestone 3 | Four KPIs, scoped region/district comparisons, seven-type chart, eligibility and PVOUT coverage. Exact administrative × type KPIs remain unsupported. |
 | 6 — Building details/interactions | Complete within expanded milestone 3 | Real mouse hover/click, stable feature state, adapter-backed fields, keyboard inspection and explicit missing PVOUT/energy. Original QGIS spot review remains pending. |
-| 7 — UX, performance and release | Local refinement complete; release pending | Responsive layout, methodology, no-key basemap/fallback, asynchronous map bundle, 47 tests, browser QA. Physical-device/accessibility/performance budgets, rights and remote hosting remain gates. |
+| 7 — UX, performance and release | Local refinement complete; release pending | Responsive layout, methodology, basemap/fallback, asynchronous map bundle, 48 tests, browser QA and repository cleanup. Physical-device/accessibility/performance budgets, rights and remote hosting remain gates. |
 
 This numbering replaces the fixture-first roadmap because real exports are now available. Reasons and the superseded Blob preference are retained in DECISIONS_AND_RISKS.md.
 
@@ -67,6 +67,10 @@ Implemented the user's screenshot-based removals, corrected full-DKI extent (inc
 Verification: 48 tests (all previous 47 plus the actual six-region extent invariant), data freshness, TypeScript and production build pass. Updated actual-app QA checks real imagery responses, native fullscreen and full bounds on desktop/mobile/landscape, alongside all prior KPI/filter/building tests. Artifacts are in ignored data/processed/qa/ui-refinement; see LOCAL_DEMO.md.
 
 ## Handoff
+
+Documentation follow-up: README and the repository review are now written in English. The requested next building-tile zoom range is **13–18**; the archive and viewer update has not been performed. Once the replacement archive is available, inspect its zoom metadata, confirm compatible statistics/provenance, align the source and rendering zoom settings, and rerun geometry, Range, and browser QA. Earlier z14–16 measurements remain historical evidence.
+
+Repository-screening follow-up: README now documents setup/private inputs/test scopes/Git policy; six unused starter files are removed; ignore rules protect future local GIS exports and generated files; the chart's dangling accessible label is fixed. Existing source data, archives and dependency versions remain unchanged. See PROJECT_REVIEW.md for the retained-file rationale and verification evidence.
 
 Viewport-layout follow-up: the user reported that the map required page scrolling to see its top/bottom. The overview now fits the desktop viewport, with independently scrollable filters and charts below. Browser checks pass at 1440×900, 1366×768, 1280×720, 1280×600 and 1920×1080 with pageScroll=0 and both map edges visible, including unsupported-filter notices and return navigation. Mobile/fullscreen/imagery and all existing 48 tests also pass. Latest evidence: data/processed/qa/viewport-layout/app-report.json.
 

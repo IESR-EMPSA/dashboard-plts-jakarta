@@ -65,11 +65,14 @@ VITE_BUILDINGS_PMTILES_URL=https://YOUR-PUBLIC-STORE-URL/buildings_eligible_dki.
 **Never** use Blob/R2 tokens, access keys or admin credentials in client environment variables. Keep credentials and large archives out of public assets and Git.
 
 ## Map source and layer behavior
+
+The requested next building-tile zoom range is **13–18**. The current archive/viewer and the historical QA below still describe the previously validated z14–16 setup. Update the source archive, inspect its actual metadata, align source/layer zoom settings, and rerun geometry/Range/browser checks before treating z13–18 as implemented.
+
 - Register PMTiles protocol once before constructing MapLibre map.
 - Development defaults to `pmtiles://http://localhost:5173/_local/buildings.pmtiles`; a configured public `VITE_BUILDINGS_PMTILES_URL` takes precedence. The local middleware serves bounded single ranges up to 16 MiB, returns 206/Content-Range, and rejects missing/oversized ranges (416), other archive paths (403) and unsupported methods (405). It exists only in Vite serve mode; preview/production require a verified public URL.
 - Actual MBTiles `source-layer` is `buildings_eligible_pvout`; recheck the converted PMTiles, never assume `buildings`.
 - Promote `building_uid` for hover/selection across clipped instances. Both building fill and outline apply the proven Polygon predicate plus eligible/admin/type filters; repeated clipped instances are never statistical observations.
-- Administrative choropleth appears at low zoom; footprints start at z14, using the archive through z16 with tested overzoom. Region selection changes choropleth to that region’s districts. NULL annual energy has a separate gray color; no missing generation is converted into zero.
+- In the currently validated implementation, administrative choropleth appears at low zoom and footprints start at z14, using the archive through z16 with tested overzoom. Region selection changes choropleth to that region’s districts. NULL annual energy has a separate gray color; no missing generation is converted into zero.
 - Style available vs missing PVOUT; keep high-contrast outlines for hover/selection and clear basemap attribution.
 - At any zoom MapLibre may render the same polygon clipped across multiple tile boundaries. Aggregation must not use source feature count.
 

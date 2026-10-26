@@ -8,6 +8,7 @@
 5. Tiles are delivery/visualization medium; aggregates come from QGIS summary tables.
 6. Site-level `pvout_1` can be null. `annual_gwh` also null where no yield, but eligible capacity remains available.
 7. V1 uses 6 kab/kota, 44 kecamatan, 7 building types.
+8. The requested next building-tile zoom range is **13–18**. Archive preparation, viewer alignment, and validation for that range remain pending; prior z14–16 QA records are preserved.
 
 ## Local demo decisions (approved milestone 3)
 
