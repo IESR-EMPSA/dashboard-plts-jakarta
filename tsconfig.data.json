@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": ["scripts/**/*.ts", "tests/**/*.ts", "src/types/solar.ts"]
+}

@@ -1,0 +1,193 @@
+{
+  "metadata": {
+    "schema_version": "1.0.0",
+    "data_version": "dki-solar-2edaec0ca52d964b",
+    "producer": {
+      "name": "jakarta-solar-data",
+      "version": "1.0.0",
+      "sha256": "26ae10cde0c65ce24841183075c9ea03d91ed68e882a3b8f978e3967cd8e0172"
+    },
+    "coverage": "DKI Jakarta",
+    "units": {
+      "capacity": "MWp",
+      "generation": "GWh/year",
+      "area": "m2",
+      "ratios": "0–1"
+    },
+    "generation_scope": "PVOUT-covered eligible buildings only",
+    "verification": "export_arithmetic_validated; source_model_topology_and_rights_pending",
+    "sources": [
+      {
+        "path": "data/crosswalks/admin.json",
+        "bytes": 1085,
+        "sha256": "0be478de94ceca378a346c9b5d7ba5e5bf5a92cf6030d0adf86fa8e9a3129f7c",
+        "role": "crosswalk"
+      },
+      {
+        "path": "data/crosswalks/building-types.json",
+        "bytes": 665,
+        "sha256": "05b689d0a83c61dd0c3e386243e26f688bd2e5675dab78f9b1fef2ed2273b148",
+        "role": "crosswalk"
+      },
+      {
+        "path": "data/raw/admin_kabkot_dki.geojson",
+        "bytes": 4780245,
+        "sha256": "69f9902e2f949d23373a0d21b01f1b6d538f2f1adf93a0047399e7ad8106c675",
+        "role": "boundaries"
+      },
+      {
+        "path": "data/raw/admin_kecamatan_dki.geojson",
+        "bytes": 7139786,
+        "sha256": "fca0ab1b086c6e8f10f4f646175807b763b49f4ae0f5764c6470eacc3a5454d7",
+        "role": "boundaries"
+      },
+      {
+        "path": "data/raw/buildings_eligible_pvout.mbtiles",
+        "bytes": 793317376,
+        "sha256": "abba6b0ceac927a9f8bba8cbd866b913e5ffc502399217d242467952704880eb",
+        "role": "building_visualization"
+      },
+      {
+        "path": "data/raw/summary_capacity_dki.csv",
+        "bytes": 1644,
+        "sha256": "37387808ec1a659f0a7afe8f916e66b00105524c786c69e8666ac0709d54ac0a",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_eligibility_dki.csv",
+        "bytes": 613,
+        "sha256": "2e10eb135e577a954e49be2ce09b24c7d0431aaa13394dd1b28ec0e74f45daa8",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_generation_dki.csv",
+        "bytes": 1675,
+        "sha256": "1c9b29705d5843c6873ad3282de2da5ad5deaafa6fe8f130511fc588481d79fd",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_jenis_dashboard.csv",
+        "bytes": 751,
+        "sha256": "417366a7502748faf5978142f7b50a6eda6320b61e3b3e9e0732be212b4e96c8",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_kecamatan_dashboard.csv",
+        "bytes": 5827,
+        "sha256": "6cce4bc299f9b382aafb46fb6033887c6e293124d49437dc5e5e0396733e1f72",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_pvout_coverage.csv",
+        "bytes": 1985,
+        "sha256": "6cbb9eebc5da3a761ae22b60345122d63b89265e07d10be07f09ab059f79e89f",
+        "role": "statistics"
+      }
+    ]
+  },
+  "overall": {
+    "total_buildings": 1747249,
+    "eligible_buildings": 1470399,
+    "eligibility_rate": 0.8415509180431638,
+    "capacity_mwp": 18627.76699292319,
+    "annual_gwh": 25117.47645231979,
+    "pvout_available": 1466275,
+    "pvout_missing": 4124,
+    "pvout_coverage": 0.997195319093661,
+    "capacity_with_pvout_mwp": 18587.61499465574,
+    "capacity_without_pvout_mwp": 40.1519982674474,
+    "pvout_capacity_coverage": 0.9978445082396241
+  },
+  "regions": [
+    {
+      "id": "31.01",
+      "wilayah": "Kepulauan Seribu",
+      "total_buildings": 5789,
+      "eligible_buildings": 4499,
+      "eligibility_rate": 0.777163586111591,
+      "capacity_mwp": 43.6279772263276,
+      "annual_gwh": 5.10158899331824,
+      "pvout_available": 375,
+      "pvout_missing": 4124,
+      "pvout_coverage": 0.08335185596799288,
+      "capacity_with_pvout_mwp": 3.47597895888015,
+      "capacity_without_pvout_mwp": 40.1519982674474,
+      "pvout_capacity_coverage": 0.07967316341181517
+    },
+    {
+      "id": "31.71",
+      "wilayah": "Jakarta Pusat",
+      "total_buildings": 142187,
+      "eligible_buildings": 113734,
+      "eligibility_rate": 0.799890285328476,
+      "capacity_mwp": 1606.35305943958,
+      "annual_gwh": 2157.06355696958,
+      "pvout_available": 113734,
+      "pvout_missing": 0,
+      "pvout_coverage": 1,
+      "capacity_with_pvout_mwp": 1606.35305943958,
+      "capacity_without_pvout_mwp": 0,
+      "pvout_capacity_coverage": 1
+    },
+    {
+      "id": "31.72",
+      "wilayah": "Jakarta Utara",
+      "total_buildings": 312104,
+      "eligible_buildings": 246294,
+      "eligibility_rate": 0.789140799220773,
+      "capacity_mwp": 3265.51323334475,
+      "annual_gwh": 4620.30383948216,
+      "pvout_available": 246294,
+      "pvout_missing": 0,
+      "pvout_coverage": 1,
+      "capacity_with_pvout_mwp": 3265.51323334475,
+      "capacity_without_pvout_mwp": 0,
+      "pvout_capacity_coverage": 1
+    },
+    {
+      "id": "31.73",
+      "wilayah": "Jakarta Barat",
+      "total_buildings": 407295,
+      "eligible_buildings": 334394,
+      "eligibility_rate": 0.821011797345904,
+      "capacity_mwp": 3921.95488163538,
+      "annual_gwh": 5307.09069865173,
+      "pvout_available": 334394,
+      "pvout_missing": 0,
+      "pvout_coverage": 1,
+      "capacity_with_pvout_mwp": 3921.95488163538,
+      "capacity_without_pvout_mwp": 0,
+      "pvout_capacity_coverage": 1
+    },
+    {
+      "id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "total_buildings": 379506,
+      "eligible_buildings": 329542,
+      "eligibility_rate": 0.868344637502437,
+      "capacity_mwp": 4385.72699451871,
+      "annual_gwh": 5750.21925251702,
+      "pvout_available": 329542,
+      "pvout_missing": 0,
+      "pvout_coverage": 1,
+      "capacity_with_pvout_mwp": 4385.72699451871,
+      "capacity_without_pvout_mwp": 0,
+      "pvout_capacity_coverage": 1
+    },
+    {
+      "id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "total_buildings": 500368,
+      "eligible_buildings": 441936,
+      "eligibility_rate": 0.883221948645797,
+      "capacity_mwp": 5404.59084675844,
+      "annual_gwh": 7277.69751570598,
+      "pvout_available": 441936,
+      "pvout_missing": 0,
+      "pvout_coverage": 1,
+      "capacity_with_pvout_mwp": 5404.59084675844,
+      "capacity_without_pvout_mwp": 0,
+      "pvout_capacity_coverage": 1
+    }
+  ]
+}

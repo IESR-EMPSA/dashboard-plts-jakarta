@@ -1,0 +1,545 @@
+{
+  "metadata": {
+    "schema_version": "1.0.0",
+    "data_version": "dki-solar-2edaec0ca52d964b",
+    "producer": {
+      "name": "jakarta-solar-data",
+      "version": "1.0.0",
+      "sha256": "26ae10cde0c65ce24841183075c9ea03d91ed68e882a3b8f978e3967cd8e0172"
+    },
+    "coverage": "DKI Jakarta",
+    "units": {
+      "capacity": "MWp",
+      "generation": "GWh/year",
+      "area": "m2",
+      "ratios": "0–1"
+    },
+    "generation_scope": "PVOUT-covered eligible buildings only",
+    "verification": "export_arithmetic_validated; source_model_topology_and_rights_pending",
+    "sources": [
+      {
+        "path": "data/crosswalks/admin.json",
+        "bytes": 1085,
+        "sha256": "0be478de94ceca378a346c9b5d7ba5e5bf5a92cf6030d0adf86fa8e9a3129f7c",
+        "role": "crosswalk"
+      },
+      {
+        "path": "data/crosswalks/building-types.json",
+        "bytes": 665,
+        "sha256": "05b689d0a83c61dd0c3e386243e26f688bd2e5675dab78f9b1fef2ed2273b148",
+        "role": "crosswalk"
+      },
+      {
+        "path": "data/raw/admin_kabkot_dki.geojson",
+        "bytes": 4780245,
+        "sha256": "69f9902e2f949d23373a0d21b01f1b6d538f2f1adf93a0047399e7ad8106c675",
+        "role": "boundaries"
+      },
+      {
+        "path": "data/raw/admin_kecamatan_dki.geojson",
+        "bytes": 7139786,
+        "sha256": "fca0ab1b086c6e8f10f4f646175807b763b49f4ae0f5764c6470eacc3a5454d7",
+        "role": "boundaries"
+      },
+      {
+        "path": "data/raw/buildings_eligible_pvout.mbtiles",
+        "bytes": 793317376,
+        "sha256": "abba6b0ceac927a9f8bba8cbd866b913e5ffc502399217d242467952704880eb",
+        "role": "building_visualization"
+      },
+      {
+        "path": "data/raw/summary_capacity_dki.csv",
+        "bytes": 1644,
+        "sha256": "37387808ec1a659f0a7afe8f916e66b00105524c786c69e8666ac0709d54ac0a",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_eligibility_dki.csv",
+        "bytes": 613,
+        "sha256": "2e10eb135e577a954e49be2ce09b24c7d0431aaa13394dd1b28ec0e74f45daa8",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_generation_dki.csv",
+        "bytes": 1675,
+        "sha256": "1c9b29705d5843c6873ad3282de2da5ad5deaafa6fe8f130511fc588481d79fd",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_jenis_dashboard.csv",
+        "bytes": 751,
+        "sha256": "417366a7502748faf5978142f7b50a6eda6320b61e3b3e9e0732be212b4e96c8",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_kecamatan_dashboard.csv",
+        "bytes": 5827,
+        "sha256": "6cce4bc299f9b382aafb46fb6033887c6e293124d49437dc5e5e0396733e1f72",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_pvout_coverage.csv",
+        "bytes": 1985,
+        "sha256": "6cbb9eebc5da3a761ae22b60345122d63b89265e07d10be07f09ab059f79e89f",
+        "role": "statistics"
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "31.01",
+      "raw_name": "Administrasi Kepulauan Seribu",
+      "wilayah": "Kepulauan Seribu"
+    },
+    {
+      "id": "31.71",
+      "raw_name": "Kota Administrasi Jakarta Pusat",
+      "wilayah": "Jakarta Pusat"
+    },
+    {
+      "id": "31.72",
+      "raw_name": "Kota Administrasi Jakarta Utara",
+      "wilayah": "Jakarta Utara"
+    },
+    {
+      "id": "31.73",
+      "raw_name": "Kota Administrasi Jakarta Barat",
+      "wilayah": "Jakarta Barat"
+    },
+    {
+      "id": "31.74",
+      "raw_name": "Kota Administrasi Jakarta Selatan",
+      "wilayah": "Jakarta Selatan"
+    },
+    {
+      "id": "31.75",
+      "raw_name": "Kota Administrasi Jakarta Timur",
+      "wilayah": "Jakarta Timur"
+    }
+  ],
+  "district_aliases": [
+    {
+      "region_id": "31.01",
+      "raw_name": "Kepulauan Seribu Selatan.",
+      "kecamatan": "Kepulauan Seribu Selatan"
+    },
+    {
+      "region_id": "31.73",
+      "raw_name": "Pal Merah",
+      "kecamatan": "Palmerah"
+    },
+    {
+      "region_id": "31.74",
+      "raw_name": "Setiabudi",
+      "kecamatan": "Setia Budi"
+    },
+    {
+      "region_id": "31.75",
+      "raw_name": "Pulogadung",
+      "kecamatan": "Pulo Gadung"
+    },
+    {
+      "region_id": "31.75",
+      "raw_name": "Kramatjati",
+      "kecamatan": "Kramat Jati"
+    }
+  ],
+  "districts": [
+    {
+      "id": "31.01.01",
+      "region_id": "31.01",
+      "wilayah": "Kepulauan Seribu",
+      "raw_name": "Kepulauan Seribu Utara",
+      "kecamatan": "Kepulauan Seribu Utara",
+      "join_key": "Kepulauan Seribu|Kepulauan Seribu Utara",
+      "alias_applied": false
+    },
+    {
+      "id": "31.01.02",
+      "region_id": "31.01",
+      "wilayah": "Kepulauan Seribu",
+      "raw_name": "Kepulauan Seribu Selatan.",
+      "kecamatan": "Kepulauan Seribu Selatan",
+      "join_key": "Kepulauan Seribu|Kepulauan Seribu Selatan",
+      "alias_applied": true
+    },
+    {
+      "id": "31.71.01",
+      "region_id": "31.71",
+      "wilayah": "Jakarta Pusat",
+      "raw_name": "Gambir",
+      "kecamatan": "Gambir",
+      "join_key": "Jakarta Pusat|Gambir",
+      "alias_applied": false
+    },
+    {
+      "id": "31.71.02",
+      "region_id": "31.71",
+      "wilayah": "Jakarta Pusat",
+      "raw_name": "Sawah Besar",
+      "kecamatan": "Sawah Besar",
+      "join_key": "Jakarta Pusat|Sawah Besar",
+      "alias_applied": false
+    },
+    {
+      "id": "31.71.03",
+      "region_id": "31.71",
+      "wilayah": "Jakarta Pusat",
+      "raw_name": "Kemayoran",
+      "kecamatan": "Kemayoran",
+      "join_key": "Jakarta Pusat|Kemayoran",
+      "alias_applied": false
+    },
+    {
+      "id": "31.71.04",
+      "region_id": "31.71",
+      "wilayah": "Jakarta Pusat",
+      "raw_name": "Senen",
+      "kecamatan": "Senen",
+      "join_key": "Jakarta Pusat|Senen",
+      "alias_applied": false
+    },
+    {
+      "id": "31.71.05",
+      "region_id": "31.71",
+      "wilayah": "Jakarta Pusat",
+      "raw_name": "Cempaka Putih",
+      "kecamatan": "Cempaka Putih",
+      "join_key": "Jakarta Pusat|Cempaka Putih",
+      "alias_applied": false
+    },
+    {
+      "id": "31.71.06",
+      "region_id": "31.71",
+      "wilayah": "Jakarta Pusat",
+      "raw_name": "Menteng",
+      "kecamatan": "Menteng",
+      "join_key": "Jakarta Pusat|Menteng",
+      "alias_applied": false
+    },
+    {
+      "id": "31.71.07",
+      "region_id": "31.71",
+      "wilayah": "Jakarta Pusat",
+      "raw_name": "Tanah Abang",
+      "kecamatan": "Tanah Abang",
+      "join_key": "Jakarta Pusat|Tanah Abang",
+      "alias_applied": false
+    },
+    {
+      "id": "31.71.08",
+      "region_id": "31.71",
+      "wilayah": "Jakarta Pusat",
+      "raw_name": "Johar Baru",
+      "kecamatan": "Johar Baru",
+      "join_key": "Jakarta Pusat|Johar Baru",
+      "alias_applied": false
+    },
+    {
+      "id": "31.72.01",
+      "region_id": "31.72",
+      "wilayah": "Jakarta Utara",
+      "raw_name": "Penjaringan",
+      "kecamatan": "Penjaringan",
+      "join_key": "Jakarta Utara|Penjaringan",
+      "alias_applied": false
+    },
+    {
+      "id": "31.72.02",
+      "region_id": "31.72",
+      "wilayah": "Jakarta Utara",
+      "raw_name": "Tanjung Priok",
+      "kecamatan": "Tanjung Priok",
+      "join_key": "Jakarta Utara|Tanjung Priok",
+      "alias_applied": false
+    },
+    {
+      "id": "31.72.03",
+      "region_id": "31.72",
+      "wilayah": "Jakarta Utara",
+      "raw_name": "Koja",
+      "kecamatan": "Koja",
+      "join_key": "Jakarta Utara|Koja",
+      "alias_applied": false
+    },
+    {
+      "id": "31.72.04",
+      "region_id": "31.72",
+      "wilayah": "Jakarta Utara",
+      "raw_name": "Cilincing",
+      "kecamatan": "Cilincing",
+      "join_key": "Jakarta Utara|Cilincing",
+      "alias_applied": false
+    },
+    {
+      "id": "31.72.05",
+      "region_id": "31.72",
+      "wilayah": "Jakarta Utara",
+      "raw_name": "Pademangan",
+      "kecamatan": "Pademangan",
+      "join_key": "Jakarta Utara|Pademangan",
+      "alias_applied": false
+    },
+    {
+      "id": "31.72.06",
+      "region_id": "31.72",
+      "wilayah": "Jakarta Utara",
+      "raw_name": "Kelapa Gading",
+      "kecamatan": "Kelapa Gading",
+      "join_key": "Jakarta Utara|Kelapa Gading",
+      "alias_applied": false
+    },
+    {
+      "id": "31.73.01",
+      "region_id": "31.73",
+      "wilayah": "Jakarta Barat",
+      "raw_name": "Cengkareng",
+      "kecamatan": "Cengkareng",
+      "join_key": "Jakarta Barat|Cengkareng",
+      "alias_applied": false
+    },
+    {
+      "id": "31.73.02",
+      "region_id": "31.73",
+      "wilayah": "Jakarta Barat",
+      "raw_name": "Grogol Petamburan",
+      "kecamatan": "Grogol Petamburan",
+      "join_key": "Jakarta Barat|Grogol Petamburan",
+      "alias_applied": false
+    },
+    {
+      "id": "31.73.03",
+      "region_id": "31.73",
+      "wilayah": "Jakarta Barat",
+      "raw_name": "Taman Sari",
+      "kecamatan": "Taman Sari",
+      "join_key": "Jakarta Barat|Taman Sari",
+      "alias_applied": false
+    },
+    {
+      "id": "31.73.04",
+      "region_id": "31.73",
+      "wilayah": "Jakarta Barat",
+      "raw_name": "Tambora",
+      "kecamatan": "Tambora",
+      "join_key": "Jakarta Barat|Tambora",
+      "alias_applied": false
+    },
+    {
+      "id": "31.73.05",
+      "region_id": "31.73",
+      "wilayah": "Jakarta Barat",
+      "raw_name": "Kebon Jeruk",
+      "kecamatan": "Kebon Jeruk",
+      "join_key": "Jakarta Barat|Kebon Jeruk",
+      "alias_applied": false
+    },
+    {
+      "id": "31.73.06",
+      "region_id": "31.73",
+      "wilayah": "Jakarta Barat",
+      "raw_name": "Kalideres",
+      "kecamatan": "Kalideres",
+      "join_key": "Jakarta Barat|Kalideres",
+      "alias_applied": false
+    },
+    {
+      "id": "31.73.07",
+      "region_id": "31.73",
+      "wilayah": "Jakarta Barat",
+      "raw_name": "Pal Merah",
+      "kecamatan": "Palmerah",
+      "join_key": "Jakarta Barat|Palmerah",
+      "alias_applied": true
+    },
+    {
+      "id": "31.73.08",
+      "region_id": "31.73",
+      "wilayah": "Jakarta Barat",
+      "raw_name": "Kembangan",
+      "kecamatan": "Kembangan",
+      "join_key": "Jakarta Barat|Kembangan",
+      "alias_applied": false
+    },
+    {
+      "id": "31.74.01",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Tebet",
+      "kecamatan": "Tebet",
+      "join_key": "Jakarta Selatan|Tebet",
+      "alias_applied": false
+    },
+    {
+      "id": "31.74.02",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Setiabudi",
+      "kecamatan": "Setia Budi",
+      "join_key": "Jakarta Selatan|Setia Budi",
+      "alias_applied": true
+    },
+    {
+      "id": "31.74.03",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Mampang Prapatan",
+      "kecamatan": "Mampang Prapatan",
+      "join_key": "Jakarta Selatan|Mampang Prapatan",
+      "alias_applied": false
+    },
+    {
+      "id": "31.74.04",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Pasar Minggu",
+      "kecamatan": "Pasar Minggu",
+      "join_key": "Jakarta Selatan|Pasar Minggu",
+      "alias_applied": false
+    },
+    {
+      "id": "31.74.05",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Kebayoran Lama",
+      "kecamatan": "Kebayoran Lama",
+      "join_key": "Jakarta Selatan|Kebayoran Lama",
+      "alias_applied": false
+    },
+    {
+      "id": "31.74.06",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Cilandak",
+      "kecamatan": "Cilandak",
+      "join_key": "Jakarta Selatan|Cilandak",
+      "alias_applied": false
+    },
+    {
+      "id": "31.74.07",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Kebayoran Baru",
+      "kecamatan": "Kebayoran Baru",
+      "join_key": "Jakarta Selatan|Kebayoran Baru",
+      "alias_applied": false
+    },
+    {
+      "id": "31.74.08",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Pancoran",
+      "kecamatan": "Pancoran",
+      "join_key": "Jakarta Selatan|Pancoran",
+      "alias_applied": false
+    },
+    {
+      "id": "31.74.09",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Jagakarsa",
+      "kecamatan": "Jagakarsa",
+      "join_key": "Jakarta Selatan|Jagakarsa",
+      "alias_applied": false
+    },
+    {
+      "id": "31.74.10",
+      "region_id": "31.74",
+      "wilayah": "Jakarta Selatan",
+      "raw_name": "Pesanggrahan",
+      "kecamatan": "Pesanggrahan",
+      "join_key": "Jakarta Selatan|Pesanggrahan",
+      "alias_applied": false
+    },
+    {
+      "id": "31.75.01",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Matraman",
+      "kecamatan": "Matraman",
+      "join_key": "Jakarta Timur|Matraman",
+      "alias_applied": false
+    },
+    {
+      "id": "31.75.02",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Pulogadung",
+      "kecamatan": "Pulo Gadung",
+      "join_key": "Jakarta Timur|Pulo Gadung",
+      "alias_applied": true
+    },
+    {
+      "id": "31.75.03",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Jatinegara",
+      "kecamatan": "Jatinegara",
+      "join_key": "Jakarta Timur|Jatinegara",
+      "alias_applied": false
+    },
+    {
+      "id": "31.75.04",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Kramatjati",
+      "kecamatan": "Kramat Jati",
+      "join_key": "Jakarta Timur|Kramat Jati",
+      "alias_applied": true
+    },
+    {
+      "id": "31.75.05",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Pasar Rebo",
+      "kecamatan": "Pasar Rebo",
+      "join_key": "Jakarta Timur|Pasar Rebo",
+      "alias_applied": false
+    },
+    {
+      "id": "31.75.06",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Cakung",
+      "kecamatan": "Cakung",
+      "join_key": "Jakarta Timur|Cakung",
+      "alias_applied": false
+    },
+    {
+      "id": "31.75.07",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Duren Sawit",
+      "kecamatan": "Duren Sawit",
+      "join_key": "Jakarta Timur|Duren Sawit",
+      "alias_applied": false
+    },
+    {
+      "id": "31.75.08",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Makasar",
+      "kecamatan": "Makasar",
+      "join_key": "Jakarta Timur|Makasar",
+      "alias_applied": false
+    },
+    {
+      "id": "31.75.09",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Ciracas",
+      "kecamatan": "Ciracas",
+      "join_key": "Jakarta Timur|Ciracas",
+      "alias_applied": false
+    },
+    {
+      "id": "31.75.10",
+      "region_id": "31.75",
+      "wilayah": "Jakarta Timur",
+      "raw_name": "Cipayung",
+      "kecamatan": "Cipayung",
+      "join_key": "Jakarta Timur|Cipayung",
+      "alias_applied": false
+    }
+  ]
+}

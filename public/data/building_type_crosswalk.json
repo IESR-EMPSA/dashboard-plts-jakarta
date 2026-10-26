@@ -1,0 +1,142 @@
+{
+  "metadata": {
+    "schema_version": "1.0.0",
+    "data_version": "dki-solar-2edaec0ca52d964b",
+    "producer": {
+      "name": "jakarta-solar-data",
+      "version": "1.0.0",
+      "sha256": "26ae10cde0c65ce24841183075c9ea03d91ed68e882a3b8f978e3967cd8e0172"
+    },
+    "coverage": "DKI Jakarta",
+    "units": {
+      "capacity": "MWp",
+      "generation": "GWh/year",
+      "area": "m2",
+      "ratios": "0–1"
+    },
+    "generation_scope": "PVOUT-covered eligible buildings only",
+    "verification": "export_arithmetic_validated; source_model_topology_and_rights_pending",
+    "sources": [
+      {
+        "path": "data/crosswalks/admin.json",
+        "bytes": 1085,
+        "sha256": "0be478de94ceca378a346c9b5d7ba5e5bf5a92cf6030d0adf86fa8e9a3129f7c",
+        "role": "crosswalk"
+      },
+      {
+        "path": "data/crosswalks/building-types.json",
+        "bytes": 665,
+        "sha256": "05b689d0a83c61dd0c3e386243e26f688bd2e5675dab78f9b1fef2ed2273b148",
+        "role": "crosswalk"
+      },
+      {
+        "path": "data/raw/admin_kabkot_dki.geojson",
+        "bytes": 4780245,
+        "sha256": "69f9902e2f949d23373a0d21b01f1b6d538f2f1adf93a0047399e7ad8106c675",
+        "role": "boundaries"
+      },
+      {
+        "path": "data/raw/admin_kecamatan_dki.geojson",
+        "bytes": 7139786,
+        "sha256": "fca0ab1b086c6e8f10f4f646175807b763b49f4ae0f5764c6470eacc3a5454d7",
+        "role": "boundaries"
+      },
+      {
+        "path": "data/raw/buildings_eligible_pvout.mbtiles",
+        "bytes": 793317376,
+        "sha256": "abba6b0ceac927a9f8bba8cbd866b913e5ffc502399217d242467952704880eb",
+        "role": "building_visualization"
+      },
+      {
+        "path": "data/raw/summary_capacity_dki.csv",
+        "bytes": 1644,
+        "sha256": "37387808ec1a659f0a7afe8f916e66b00105524c786c69e8666ac0709d54ac0a",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_eligibility_dki.csv",
+        "bytes": 613,
+        "sha256": "2e10eb135e577a954e49be2ce09b24c7d0431aaa13394dd1b28ec0e74f45daa8",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_generation_dki.csv",
+        "bytes": 1675,
+        "sha256": "1c9b29705d5843c6873ad3282de2da5ad5deaafa6fe8f130511fc588481d79fd",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_jenis_dashboard.csv",
+        "bytes": 751,
+        "sha256": "417366a7502748faf5978142f7b50a6eda6320b61e3b3e9e0732be212b4e96c8",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_kecamatan_dashboard.csv",
+        "bytes": 5827,
+        "sha256": "6cce4bc299f9b382aafb46fb6033887c6e293124d49437dc5e5e0396733e1f72",
+        "role": "statistics"
+      },
+      {
+        "path": "data/raw/summary_pvout_coverage.csv",
+        "bytes": 1985,
+        "sha256": "6cbb9eebc5da3a761ae22b60345122d63b89265e07d10be07f09ab059f79e89f",
+        "role": "statistics"
+      }
+    ]
+  },
+  "categories": [
+    {
+      "id": "hunian",
+      "jenis_group": "Hunian",
+      "raw_labels": [
+        "Hunian",
+        "HUNIAN"
+      ]
+    },
+    {
+      "id": "non-hunian",
+      "jenis_group": "Non Hunian",
+      "raw_labels": [
+        "Non Hunian",
+        "NON HUNIAN"
+      ]
+    },
+    {
+      "id": "tidak-diketahui",
+      "jenis_group": "Tidak diketahui",
+      "raw_labels": [
+        "Tidak diketahui"
+      ]
+    },
+    {
+      "id": "pemerintahan",
+      "jenis_group": "Pemerintahan",
+      "raw_labels": [
+        "Pemerintahan",
+        "PEMERINTAHAN"
+      ]
+    },
+    {
+      "id": "kelistrikan",
+      "jenis_group": "Kelistrikan",
+      "raw_labels": [
+        "Kelistrikan"
+      ]
+    },
+    {
+      "id": "masjid",
+      "jenis_group": "Masjid",
+      "raw_labels": [
+        "Masjid"
+      ]
+    },
+    {
+      "id": "mushola",
+      "jenis_group": "Mushola",
+      "raw_labels": [
+        "Mushola"
+      ]
+    }
+  ]
+}

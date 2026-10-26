@@ -1,0 +1,11 @@
+{
+  "categories": [
+    { "id": "hunian", "jenis_group": "Hunian", "raw_labels": ["Hunian", "HUNIAN"] },
+    { "id": "non-hunian", "jenis_group": "Non Hunian", "raw_labels": ["Non Hunian", "NON HUNIAN"] },
+    { "id": "tidak-diketahui", "jenis_group": "Tidak diketahui", "raw_labels": ["Tidak diketahui"] },
+    { "id": "pemerintahan", "jenis_group": "Pemerintahan", "raw_labels": ["Pemerintahan", "PEMERINTAHAN"] },
+    { "id": "kelistrikan", "jenis_group": "Kelistrikan", "raw_labels": ["Kelistrikan"] },
+    { "id": "masjid", "jenis_group": "Masjid", "raw_labels": ["Masjid"] },
+    { "id": "mushola", "jenis_group": "Mushola", "raw_labels": ["Mushola"] }
+  ]
+}

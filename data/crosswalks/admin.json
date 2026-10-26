@@ -1,0 +1,17 @@
+{
+  "regions": [
+    { "id": "31.01", "raw_name": "Administrasi Kepulauan Seribu", "wilayah": "Kepulauan Seribu" },
+    { "id": "31.71", "raw_name": "Kota Administrasi Jakarta Pusat", "wilayah": "Jakarta Pusat" },
+    { "id": "31.72", "raw_name": "Kota Administrasi Jakarta Utara", "wilayah": "Jakarta Utara" },
+    { "id": "31.73", "raw_name": "Kota Administrasi Jakarta Barat", "wilayah": "Jakarta Barat" },
+    { "id": "31.74", "raw_name": "Kota Administrasi Jakarta Selatan", "wilayah": "Jakarta Selatan" },
+    { "id": "31.75", "raw_name": "Kota Administrasi Jakarta Timur", "wilayah": "Jakarta Timur" }
+  ],
+  "district_aliases": [
+    { "region_id": "31.01", "raw_name": "Kepulauan Seribu Selatan.", "kecamatan": "Kepulauan Seribu Selatan" },
+    { "region_id": "31.73", "raw_name": "Pal Merah", "kecamatan": "Palmerah" },
+    { "region_id": "31.74", "raw_name": "Setiabudi", "kecamatan": "Setia Budi" },
+    { "region_id": "31.75", "raw_name": "Pulogadung", "kecamatan": "Pulo Gadung" },
+    { "region_id": "31.75", "raw_name": "Kramatjati", "kecamatan": "Kramat Jati" }
+  ]
+}
