@@ -6,7 +6,7 @@ flowchart TD
   A["QGIS GeoPackages + summarized tables"] --> B["Offline ETL / validation"]
   B --> C["MVT in PMTiles"]
   B --> D["Validated JSON summaries"]
-  C --> E["Range-capable storage — R2 preferred, pending approval"]
+  C --> E["Cloudflare R2 — localhost delivery verified"]
   D --> F["Vercel static frontend public/data"]
   E --> G["Browser: MapLibre + PMTiles protocol"]
   F --> H["Vue 3 + TypeScript dashboard"]
@@ -17,7 +17,7 @@ flowchart TD
 - Frontend: existing Vue 3 + Vite project, intended for Vercel; no deployment authorized yet.
 - Browser map: MapLibre GL JS + `pmtiles` protocol.
 - Data: precomputed, versioned static JSON; PMTiles blob for building geometries.
-- Storage: Cloudflare R2 preferred, not finalized/configured. The earlier Blob/SIN1 preference is superseded by the user's updated requirement; the decision history is retained in `DECISIONS_AND_RISKS.md`. No remote URL or CORS has been verified.
+- Storage: the repaired archive is uploaded to Cloudflare R2; its public development URL is verified with localhost Range/206, CORS and actual MapLibre interactions. Production custom-domain/origin/cost gates remain. The earlier Blob/SIN1 preference is superseded; decision history is retained in `DECISIONS_AND_RISKS.md`. See `R2_LOCAL_INTEGRATION.md` for measured evidence and the browser/Windows DNS distinction.
 - No production Node API endpoints, FastAPI or PostGIS. Development uses a Vite-only fixed-file byte-range middleware; it is not a deployed application backend.
 - Keep original GeoPackages offline; no upload of raw research datasets into frontend repo.
 
@@ -60,9 +60,11 @@ The existing publication contract remains unchanged; frontend-specific readonly/
 ## Environment variables
 ```dotenv
 # PUBLIC URL: safe in browser, no secret
-VITE_BUILDINGS_PMTILES_URL=https://YOUR-PUBLIC-STORE-URL/buildings_eligible_dki.pmtiles
+VITE_BUILDINGS_PMTILES_URL=https://pub-780258dd404b45ddaec3dc7bd19afed1.r2.dev/buildings_eligible_dki_z13-18_repaired.pmtiles
 ```
 **Never** use Blob/R2 tokens, access keys or admin credentials in client environment variables. Keep credentials and large archives out of public assets and Git.
+
+The current ignored `.env.local` activates this development URL. An empty value restores local delivery in development after restarting Vite; preview/production requires a public URL at build time. The URL is configuration only: no source layer, style, attribute or statistical calculation changes. There is no automatic fallback that silently masks remote failures.
 
 ## Map source and layer behavior
 
@@ -88,7 +90,7 @@ The active building-tile zoom range is **13–18**. Source attributes in a separ
 
 Existing source: `data/raw/buildings_eligible_pvout.mbtiles`, 793,317,376 bytes, 2,659 gzip MVT tiles, z14–16. Official CLI conversion targets ignored `data/processed/buildings_eligible_dki.pmtiles`; run show/verify and compare tile contents. Known type-0 instances require separate diagnostic evidence; conversion is not repair. See `GEOMETRY_QA.md` and `DATA_PIPELINE.md` for schemas, normalization and evidence.
 
-Conversion is complete: 790,567,834 bytes (753.9442386627197 MiB), PMTiles v3; show/verify passed and 28 representative tiles are byte-identical. Isolated Chrome/MapLibre 6.15.0 diagnostics reproduce tile-render failures without a geometry predicate and recover tested rendering/hover/click using an explicit Polygon filter. The predicate now protects both application building layers. Actual-app Chrome QA exercises the official PMTiles browser protocol, local Range/206, real mouse hover/click, dense/island views, and overzoom; remote CORS remains untested. MapLibre 6’s separate worker is delivered through Vite’s `?worker&url` asset and `setWorkerUrl`. See `LOCAL_DEMO.md` for evidence and limitations.
+The original z14–16 conversion is complete: 790,567,834 bytes (753.9442386627197 MiB), PMTiles v3; show/verify passed and 28 representative tiles are byte-identical. Isolated Chrome/MapLibre 6.15.0 diagnostics reproduce tile-render failures without a geometry predicate and recover tested rendering/hover/click using an explicit Polygon filter. The predicate now protects both application building layers. Actual-app Chrome QA exercises the official PMTiles browser protocol, real mouse hover/click and dense/island views. Current repaired z13–18 delivery also passes R2 Range/CORS and native-zoom checks through normal Windows DNS; see `R2_LOCAL_INTEGRATION.md`. MapLibre 6’s separate worker is delivered through Vite’s `?worker&url` asset and `setWorkerUrl`. See `LOCAL_DEMO.md` for historical local evidence and limitations.
 
 ## Basemap and local behavior
 
@@ -103,6 +105,6 @@ Vite watches application sources but excludes raw/processed archives, QA Chrome 
 The application provides an isolated reactive Indonesian/English context using the existing Vue APIs. A typed paired catalog drives all components, display names, null-safe number formatting, recovery messages and accessibility labels. The navbar switch persists a valid preference locally and does not affect dataset identity, statistical scope or map filters. Native map labels, DOM markers and attribution update in place, retaining sources, camera, selected features and fullscreen. See [LOCALIZATION.md](LOCALIZATION.md) for contracts and regression coverage.
 
 ## Hosting fallback
-R2 is the preferred candidate, pending measured Range/CORS/performance/cost and explicit publication approval. Storage remains replaceable through the public URL without rewriting Vue. No upload is authorized in the current stage.
+R2 development delivery is accepted for localhost. Storage remains replaceable through the public URL without rewriting Vue, and the existing local endpoint is available when the environment value is empty. Production custom-domain delivery, production-origin CORS, performance/cost budgets and frontend deployment remain separate gates. No further upload or deployment is authorized in this stage.
 
 References checked during the audit: [PMTiles CLI](https://docs.protomaps.com/pmtiles/cli), [MapLibre integration](https://docs.protomaps.com/pmtiles/maplibre), [storage](https://docs.protomaps.com/pmtiles/cloud-storage), [R2 CORS](https://developers.cloudflare.com/r2/buckets/cors/), [public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/), [cache limits](https://developers.cloudflare.com/cache/interaction-cloudflare-products/r2/).

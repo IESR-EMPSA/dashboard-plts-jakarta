@@ -1,6 +1,6 @@
 # Codex context pack — how to use
 
-The existing Vue 3 + TypeScript + Vite/pnpm project is initialized; preserve it. The audit, preprocessing, archive QA, milestone 2 data layer and approved milestone 3 local WebGIS/dashboard are complete. Run `pnpm.cmd dev` and open **http://localhost:5173/**. The official PMTiles protocol reads the separate GeoPackage-verified z13–18 repaired archive through a Vite-only Range endpoint; nothing is uploaded. See `docs/ARCHIVE_REPAIR_REPORT.md` for current delivery/rollback evidence and `docs/LOCAL_DEMO.md` for the earlier local demo.
+The existing Vue 3 + TypeScript + Vite/pnpm project is initialized; preserve it. The audit, preprocessing, archive QA, frontend data layer and local WebGIS/dashboard are complete. Run `pnpm.cmd dev` and open **http://localhost:5173/**. The official PMTiles protocol now reads the GeoPackage-verified z13–18 repaired archive from the user's Cloudflare R2 public development URL, configured in ignored `.env.local`. Clearing that value restores the preserved Vite-only local Range endpoint. See `docs/R2_LOCAL_INTEGRATION.md` for current delivery, performance and DNS evidence, and `docs/ARCHIVE_REPAIR_REPORT.md` for repair/rollback provenance. No frontend deployment has occurred.
 
 ## Initial prompt to paste into Codex
 
@@ -17,7 +17,7 @@ The existing Vue 3 + TypeScript + Vite/pnpm project is initialized; preserve it.
 ## Rules for sharing data with Codex
 - Share **schema and small representative samples** of the QGIS export before sharing the full 1.47-million-feature dataset.
 - For all external data, explicitly state: `not ready`, `sample`, or `validated production`.
-- Cloudflare R2 is the preferred storage candidate, pending confirmation. No upload is authorized. The frontend eventually receives a public URL only; never storage credentials.
+- The repaired PMTiles is already uploaded to Cloudflare R2; localhost integration uses a public URL only. Never expose storage credentials. Further uploads or deployment require separate instructions.
 - `data/raw/` contains six CSVs, two administrative GeoJSONs and the 793,317,376-byte MBTiles archive. Keep these immutable/ignored. They are file-validated exports; publication rights and original model QA remain unverified.
 - The original eligible-building GeoPackage is now available at `data/raw/buildings_eligible_pvout.gpkg`. It verified the narrowly scoped attribute corrections in the separate repaired z13–18 archive. The supplied new MBTiles and its initial PMTiles remain unchanged under `data/processed/`; see the repair report for exact paths and safeguards. This does not authorize changes to the statistical publication.
 - Reviewable mappings live in `data/crosswalks/`; small generated derivatives belong in `public/data/`; archives/QA artifacts belong in ignored `data/processed/`. Project-local CLI files belong in ignored `.tools/`.
@@ -27,4 +27,4 @@ The existing Vue 3 + TypeScript + Vite/pnpm project is initialized; preserve it.
 ## Current handoff
 The local demo includes authoritative KPIs, all 6 regions / 44 districts, 7 building types, choropleths, scoped charts and real building details. Combined administrative × type KPIs stay unsupported. Manual functional UAT is approved; do not repeat the full functional suite for the technical follow-up. All 62 tests pass, including two bounded-render-query regression tests. See `docs/TECHNICAL_QA_REPORT.md` for continuous hardware/software stress, observed memory/bandwidth tradeoffs and remaining production blockers, alongside `docs/IMPLEMENTATION_PLAN.md` and `docs/ARCHIVE_REPAIR_REPORT.md`.
 
-On Windows use `pnpm.cmd` if PowerShell blocks `pnpm.ps1`; do not change execution policy. No environment variable is needed locally when the validated archive exists. Production preview requires a verified public archive URL; remote storage is still unconfigured. No deployment, upload, commit or push is authorized.
+On Windows use `pnpm.cmd` if PowerShell blocks `pnpm.ps1`; do not change execution policy. The current `.env.local` activates R2; with an empty value, development uses the validated local archive. Preview/production needs a public URL at build time. Normal Windows DNS/DoH and certificate-verified Range requests pass; isolated Chrome QA uses the Windows resolver, with no IP override or system setting changes. Separate browser DNS settings can still follow an intercepted ISP path. Stop after localhost verification: no further upload, deployment, commit or push is authorized.

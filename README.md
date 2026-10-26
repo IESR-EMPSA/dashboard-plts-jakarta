@@ -38,6 +38,8 @@ Open **http://localhost:5173/**. The port is fixed; use the existing development
 
 Development does not require an `.env` file when the local archive is available. To use a public URL, copy [`.env.example`](.env.example) to `.env.local`, set `VITE_BUILDINGS_PMTILES_URL`, and restart Vite. The URL must support HTTP Range/206 and appropriate CORS. Values in `VITE_*` are visible in the browser; provide public URLs only.
 
+The current local environment uses the verified Cloudflare R2 development URL. Clear `VITE_BUILDINGS_PMTILES_URL` and restart Vite to restore local archive delivery. See [R2 localhost integration](docs/R2_LOCAL_INTEGRATION.md) for the exact public URL, normal Windows DNS/browser considerations, Range/CORS evidence and the local/remote performance comparison. This configuration does not deploy the frontend.
+
 ```sh
 pnpm build
 pnpm preview
@@ -78,6 +80,7 @@ This directory is ignored by Git. See the [data contract](docs/DATA_CONTRACT.md)
 | `node scripts/qa-app.mjs` | Test the actual browser app: both languages, map, Range, filters, key metrics, layout, and icons | Development server, local PMTiles, Chrome |
 | `node scripts/qa-app.mjs --archive-update` | Also inspect all 45 repaired building IDs with real mouse clicks and GeoPackage-verified values | Repaired archive and source-check evidence; see the repair report |
 | `node scripts/qa-technical.mjs --label=local --minutes=5 --gpu=default` | Continuous technical navigation, memory, responsiveness, Range and rendering checks; does not replay functional UAT | Development server, repaired archive, local acceptance evidence, Windows Chrome/PowerShell |
+| `node scripts/qa-r2-integration.mjs --mode=remote --label=remote` | Focused R2 delivery, native zooms 13–18, real details and summary-backed filters; comparable local route via `--mode=local` | Development server configured for the chosen source, local archive for byte comparison, Windows Chrome; normal Windows DNS, no IP overrides |
 
 Application QA uses an existing Chrome installation; `CHROME_PATH` can point to another location. The default browser path follows the Windows Chrome installation. JSON reports, screenshots, and temporary profiles are written under `data/processed/qa/` and remain outside Git. No linter is configured.
 
@@ -105,9 +108,9 @@ Before committing, inspect `git status --short`, `git diff --stat`, and `git dif
 
 ## Status and documentation
 
-Manual functional UAT is approved. The [technical QA report](docs/TECHNICAL_QA_REPORT.md) records continuous GPU/software stress, memory and Range measurements, confirmed performance fixes, and current production blockers. Local automated/build/data-integrity gates pass; remote archive integration and target-device/network budgets still require sign-off.
+Manual functional UAT is approved. The [technical QA report](docs/TECHNICAL_QA_REPORT.md) records continuous GPU/software stress, memory and Range measurements and confirmed performance fixes. The [R2 integration report](docs/R2_LOCAL_INTEGRATION.md) records accepted localhost delivery and the reused-local versus remote comparison. All 62 tests, TypeScript, production build and data-integrity gates pass; production-origin CORS, custom-domain delivery and target-device/network budgets remain open.
 
-The local demo is implemented. Vercel frontend hosting and Cloudflare R2 archive storage remain planned; remote URLs, CORS, costs, publication rights, and source-model/topology/vintage verification are still pending. No upload or deployment was performed during local implementation. The large map bundle and approximately 9.52 MB of administrative GeoJSON still require production performance budgets.
+The repaired archive is uploaded to R2 and integrated with localhost through its public development URL; the dashboard retains a local configuration fallback. Vercel frontend deployment remains a separate, unauthorized stage. Production hosting/costs, publication rights and source-model/topology/vintage verification are still pending. The large map bundle and approximately 9.52 MB of administrative GeoJSON still require production performance budgets.
 
 - [Repository screening and cleanup](docs/PROJECT_REVIEW.md)
 - [Local demo usage and QA evidence](docs/LOCAL_DEMO.md)
