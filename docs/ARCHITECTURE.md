@@ -18,7 +18,7 @@ flowchart TD
 - Browser map: MapLibre GL JS + `pmtiles` protocol.
 - Data: precomputed, versioned static JSON; PMTiles blob for building geometries.
 - Storage: Cloudflare R2 preferred, not finalized/configured. The earlier Blob/SIN1 preference is superseded by the user's updated requirement; the decision history is retained in `DECISIONS_AND_RISKS.md`. No remote URL or CORS has been verified.
-- No Node API endpoints, no FastAPI, no PostGIS for initial read-only release.
+- No production Node API endpoints, FastAPI or PostGIS. Development uses a Vite-only fixed-file byte-range middleware; it is not a deployed application backend.
 - Keep original GeoPackages offline; no upload of raw research datasets into frontend repo.
 
 ## Important technical distinctions
@@ -27,45 +27,35 @@ flowchart TD
 - If a filter combination lacks an exact precomputed aggregate, UI must explicitly disable unsupported derived KPIs or require a new aggregate before enabling that filter combination.
 - Avoid generating an enormous JSON containing all buildings. The browser requests only necessary tiles based on viewport.
 
-## Suggested modules (adapt to existing repository; do not regenerate project)
-The tree below is a future application proposal, not the current implementation. Current app: starter App/HelloWorld/main/style and assets; MapLibre installed, PMTiles/UI/state/chart packages absent. Implemented data-only additions: `scripts/`, `tests/`, `data/crosswalks/`, `src/types/solar.ts`, nine generated `public/data/` outputs; ignored `.tools/` and `data/processed/`. Local preprocessing/QA servers are development tools, not a production backend.
+## Implemented application modules (milestone 3)
 
-```
+The existing project and milestone 2 layer are preserved. The app provides one shared dashboard store; the WebGL map loads as a separate asynchronous module. The official `pmtiles` package is the only new application dependency; charts use native HTML/SVG.
+
+```text
 src/
+  App.vue, main.ts, style.css
   components/
-    dashboard/KpiCards.vue
-    dashboard/RegionComparison.vue
-    dashboard/TypeBreakdown.vue
-    dashboard/PvoutCoverage.vue
+    AppIcon.vue
+    dashboard/{KpiCards,CoverageCard,AnalyticalCharts}.vue
     filters/AdminFilters.vue
-    map/SolarMap.vue
-    map/MapLegend.vue
-    map/BuildingDetails.vue
+    map/{SolarMap,MapLoading,BuildingDetails}.vue
     methodology/MethodologyPanel.vue
-  composables/
-    useMapLayers.ts
-    useSummaryData.ts
-  stores/
-    dashboard.ts
-  services/
-    dataLoader.ts
-    mapSources.ts
-  types/
-    solar.ts
-  utils/
-    units.ts
-    validation.ts
-public/
-  data/
-    summary_wilayah.json
-    summary_kecamatan.json
-    summary_jenis.json
-    summary_pvout_coverage.json
-    admin_kabkot.geojson
-    admin_kecamatan.geojson    # source exists; normalize with explicit crosswalk
+  map/{protocol,basemap,mapModel}.ts
+  composables/useDashboard.ts
+  stores/dashboard.ts
+  selectors/dashboard.ts
+  services/{solarDataService,dataValidation,normalization,boundaryGeoJson,dataError}.ts
+  types/{solar,dashboard}.ts
+  utils/{format,presentation}.ts
+scripts/dev/pmtilesPlugin.ts
+tests/map-integration.test.ts
+scripts/qa-app.mjs
 ```
 
-Use Pinia, Naive UI, UnoCSS and ECharts when already in the repo or deliberately adopted. Otherwise minimize dependencies. Add a small `src/types/solar.ts` contract first. Use runtime data validation where useful (e.g., Zod only if warranted).
+The nine existing `public/data/` files remain unchanged. The 790,567,834-byte archive stays at ignored `data/processed/buildings_eligible_dki.pmtiles`. No archive enters `public/` or `dist/`.
+
+## Implemented frontend data layer (milestone 2)
+The existing publication contract remains unchanged; frontend-specific readonly/filter/scope types live in `src/types/dashboard.ts`. `services/solarDataService.ts` verifies manifest hashes, runtime schemas and compatible releases, with cached summaries and lazy boundaries. `selectors/dashboard.ts` supplies supported KPIs and explicitly scoped marginal charts; administrative × type intersections have no KPI data. `stores/dashboard.ts` uses existing Vue reactivity with per-app ownership, loading/error/retry/refresh state and stale-request protection; `composables/useDashboard.ts` provides injection. Normalization and renderer-owned GeoJSON adapters are now consumed by the map. Milestone 2 required no new dependency; milestone 3 adds the official PMTiles client. See `FRONTEND_DATA_LAYER.md` for the unchanged data APIs and `LOCAL_DEMO.md` for the application.
 
 ## Environment variables
 ```dotenv
@@ -76,10 +66,10 @@ VITE_BUILDINGS_PMTILES_URL=https://YOUR-PUBLIC-STORE-URL/buildings_eligible_dki.
 
 ## Map source and layer behavior
 - Register PMTiles protocol once before constructing MapLibre map.
-- Add vector source URL `pmtiles://<verified public URL>`, only in the separately approved integration milestone.
+- Development defaults to `pmtiles://http://localhost:5173/_local/buildings.pmtiles`; a configured public `VITE_BUILDINGS_PMTILES_URL` takes precedence. The local middleware serves bounded single ranges up to 16 MiB, returns 206/Content-Range, and rejects missing/oversized ranges (416), other archive paths (403) and unsupported methods (405). It exists only in Vite serve mode; preview/production require a verified public URL.
 - Actual MBTiles `source-layer` is `buildings_eligible_pvout`; recheck the converted PMTiles, never assume `buildings`.
-- Promote feature ID using `building_uid` only if confirmed present/unique/precise in tile attributes.
-- Visibility by zoom: admin first, buildings at high zoom (starting experiment z14; exact cutoff performance dependent).
+- Promote `building_uid` for hover/selection across clipped instances. Both building fill and outline apply the proven Polygon predicate plus eligible/admin/type filters; repeated clipped instances are never statistical observations.
+- Administrative choropleth appears at low zoom; footprints start at z14, using the archive through z16 with tested overzoom. Region selection changes choropleth to that region’s districts. NULL annual energy has a separate gray color; no missing generation is converted into zero.
 - Style available vs missing PVOUT; keep high-contrast outlines for hover/selection and clear basemap attribution.
 - At any zoom MapLibre may render the same polygon clipped across multiple tile boundaries. Aggregation must not use source feature count.
 
@@ -94,7 +84,13 @@ VITE_BUILDINGS_PMTILES_URL=https://YOUR-PUBLIC-STORE-URL/buildings_eligible_dki.
 
 Existing source: `data/raw/buildings_eligible_pvout.mbtiles`, 793,317,376 bytes, 2,659 gzip MVT tiles, z14–16. Official CLI conversion targets ignored `data/processed/buildings_eligible_dki.pmtiles`; run show/verify and compare tile contents. Known type-0 instances require separate diagnostic evidence; conversion is not repair. See `GEOMETRY_QA.md` and `DATA_PIPELINE.md` for schemas, normalization and evidence.
 
-Conversion is complete: 790,567,834 bytes (753.9442386627197 MiB), PMTiles v3; show/verify passed and 28 representative tiles are byte-identical. Isolated Chrome/MapLibre 6.15.0 diagnostics reproduce tile-render failures without a geometry predicate and recover tested rendering/hover/click using an explicit Polygon filter. Apply that predicate to all future building rendering layers; it is not yet in the app. The diagnostic serves extracted MVT locally, so PMTiles browser protocol/Range and remote CORS remain untested. MapLibre 6 ships ES modules with a separate worker asset; verify its URL/delivery during Vite integration.
+Conversion is complete: 790,567,834 bytes (753.9442386627197 MiB), PMTiles v3; show/verify passed and 28 representative tiles are byte-identical. Isolated Chrome/MapLibre 6.15.0 diagnostics reproduce tile-render failures without a geometry predicate and recover tested rendering/hover/click using an explicit Polygon filter. The predicate now protects both application building layers. Actual-app Chrome QA exercises the official PMTiles browser protocol, local Range/206, real mouse hover/click, dense/island views, and overzoom; remote CORS remains untested. MapLibre 6’s separate worker is delivered through Vite’s `?worker&url` asset and `setWorkerUrl`. See `LOCAL_DEMO.md` for evidence and limitations.
+
+## Basemap and local behavior
+
+OpenFreeMap Positron is the no-key light basemap, with provider attribution retained. If the style cannot load, or a provider source fails, the UI visibly switches to a neutral background while local boundaries/PMTiles continue working. Controls toggle basemap, buildings, choropleth, administrative outlines and district outlines. This is an external read-only basemap dependency; no data is uploaded. See [OpenFreeMap quick start](https://openfreemap.org/quick_start/).
+
+Vite watches application sources but excludes raw/processed archives, QA Chrome profiles and local tools; otherwise Windows can crash its watcher on the browser’s locked Cookies file. The server binds localhost on strict port 5173.
 
 ## Hosting fallback
 R2 is the preferred candidate, pending measured Range/CORS/performance/cost and explicit publication approval. Storage remains replaceable through the public URL without rewriting Vue. No upload is authorized in the current stage.

@@ -1,5 +1,7 @@
 # Building archive geometry QA
 
+This document preserves the stage-C isolated archive diagnostic. The later milestone 3 application now uses its Polygon predicate on both building layers and has separate official-protocol/Range/browser evidence in LOCAL_DEMO.md. Remote hosting and source-geometry repair remain outside the completed local scope.
+
 ## Audit baseline and scope
 Immutable source: `data/raw/buildings_eligible_pvout.mbtiles`, 793,317,376 bytes, 2,659 gzip MVT tiles, z14–16, source-layer `buildings_eligible_pvout`.
 
@@ -74,7 +76,7 @@ The tested diagnostic predicate is:
 It filters rendering explicitly before geometry loading; **it does not modify/drop archive contents**. With it, island MBTiles/PMTiles visible identity hashes and screenshot SHA-256 hashes match. DOM mouse events through MapLibre handlers exercise hover feature-state and click selection. Affected UID 1742057 retains 10.294087270364981 kWp, NoData and null generation; dense Available UID 265864 retains 8.970119480881841 kWp and 0.012433698105555037 GWh. Filtered cases have no map errors, page exceptions or missing assets. Screenshots were inspected.
 
 ## Future integration strategy and optional re-export proposal
-Apply an explicit Polygon predicate to every building rendering layer, composed with administrative/type predicates. Use string building_uid and geometry-safe interactions on filtered rendered features. This tested strategy permits a future local proof of concept without changing the current source. It has **not** been added to the application.
+Apply an explicit Polygon predicate to every building rendering layer, composed with administrative/type predicates. Use string building_uid and geometry-safe interactions on filtered rendered features. At stage C this was an isolated strategy. Milestone 3 now implements it on both building fill and outline and verifies actual application interaction without changing the archive; see LOCAL_DEMO.md.
 
 For a clean source archive, first inspect the original exporter/GeoPackage, reproduce a boundary example, and change the tile export to omit only empty clipped geometries while preserving every eligible source identity and real polygon. Re-export to a new versioned file, then compare identity sets, geometry fidelity, attributes and summary compatibility at all zooms. This proposal needs approval; no re-export, tile regeneration or record removal has occurred.
 

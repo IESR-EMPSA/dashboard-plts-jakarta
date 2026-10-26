@@ -9,11 +9,12 @@
     "preview": "vite preview",
     "data:prepare": "node scripts/prepare-data.ts",
     "data:check": "node scripts/prepare-data.ts --check",
-    "test": "node --test tests/data-pipeline.test.ts",
+    "test": "node --test tests/data-pipeline.test.ts tests/frontend-data.test.ts tests/map-integration.test.ts",
     "typecheck": "vue-tsc --noEmit --incremental false -p tsconfig.app.json && tsc --noEmit --incremental false -p tsconfig.node.json && tsc -p tsconfig.data.json"
   },
   "dependencies": {
     "maplibre-gl": "^6.15.0",
+    "pmtiles": "^4.5.0",
     "vue": "^3.5.44"
   },
   "devDependencies": {

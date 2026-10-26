@@ -18,7 +18,7 @@ Eight source CSV/GeoJSON files and the building MBTiles reside under ignored `da
 
 - `data/crosswalks/admin.json`: six explicit raw-region/code/canonical-name mappings and five region-scoped district-name aliases. District codes come from the supplied geometry; all 44 code/name joins are emitted for review. These codes are unique in the supplied files, not independently certified against an official register.
 - `data/crosswalks/building-types.json`: seven canonical category IDs/names with explicit accepted raw labels, including HUNIAN, NON HUNIAN and PEMERINTAHAN. Unknown/ambiguous labels fail; no fuzzy matching.
-- Raw `useable_m2` → normalized detail `usable_m2` is a documented future tile adapter, defined in `src/types/solar.ts`. Preprocessing does not recalculate building attributes or rewrite tiles.
+- Raw `useable_m2` → normalized detail `usable_m2` is implemented by `src/services/normalization.ts` and consumed by milestone 3 building details. Preprocessing does not recalculate building attributes or rewrite tiles.
 
 ## Generated files and schemas
 Data-only TypeScript interfaces are in `src/types/solar.ts`. All JSON measurements are real export values. Counts are integers; capacity is MWp, generation is GWh/year, and ratios are 0–1. `annual_gwh` is nullable; zero is retained when it is a known value.
@@ -46,7 +46,7 @@ Each output carries schema_version, data_version, producer name/version/hash, un
 
 The data version hashes ordered input/crosswalk fingerprints and the producer fingerprint. The producer fingerprint covers preprocessing source, CLI source and publication types. Identical input/transform bytes produce identical output bytes. Crosswalk changes also change the version. The manifest hashes every other output; it excludes itself to avoid recursive hashing.
 
-Do not edit generated files by hand. Change reviewed inputs/mappings/code, then regenerate and validate. A future PMTiles conversion report records the MBTiles hash and data version so the separately stored archive can be matched to these summaries.
+Do not edit generated files by hand. Change reviewed inputs/mappings/code only in an approved data stage, then regenerate and validate. The completed PMTiles conversion report records the MBTiles hash and data version so the separately stored archive can be matched to these summaries; see GEOMETRY_QA.md and the ignored `data/processed/qa/archive-report.json`.
 
 ## Validation and limits
 Checks cover exact schemas/counts, safe nonnegative integers, strict finite numerics, valid quantiles/statistic means, explicit status values, null/PVOUT consistency, denominator ratios, six-region/five-alias crosswalk completeness, 44 unambiguous district joins, code parents, geometry structure/coordinates, independent district→region/type→DKI reconciliation and reference totals. Tolerance is 0.000001 MWp/GWh; counts are exact.

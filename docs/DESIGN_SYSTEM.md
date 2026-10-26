@@ -35,7 +35,13 @@
 - Show canonical type labels. Detail `usable_m2` adapts raw `useable_m2`; omitted tile energy displays unavailable. These adapters do not change the model.
 
 ## Implementation status
-This is the target design. Starter components/CSS do not implement it yet. The approved data/archive stage adds no dashboard UI or application map. Vintage, rights and production map performance remain release gates.
+Milestone 3 implements a local Indonesian-language research UI: light paper surfaces, dark green text, teal capacity footprints, amber missing-PVOUT footprints, four KPI cards, compact filter/coverage sidebar, primary map, scoped analytical charts and methodology dialog. Number formatting uses id-ID; GWp/TWh KPIs use two decimal places and precise source-unit values remain accessible.
+
+Desktop prioritizes the map with a 258 px sidebar (282 px on wide screens). Mobile uses two-column KPIs, inline stacked filters, full-width map and a scrollable building bottom sheet. A filter drawer/collapsible desktop sidebar remains a possible later refinement. Native controls, focus outlines, skip link, keyboard inspection, Escape dismissal and reduced-motion behavior are implemented. Chromium screenshots and automated interaction checks cover desktop and 390 px mobile; physical touch and broader accessibility audits remain pending.
+
+Regional comparison toggles GWp/TWh and follows the selected parent region; its scope is explicit. The seven-category capacity chart stays DKI-wide in MWp. Eligibility and PVOUT count coverage follow supported KPI scope; unsupported intersections show an explanation. No chart substitutes zero for NULL energy.
+
+Vintage, rights, full source-model verification and production device/network performance remain release gates. See LOCAL_DEMO.md.
 
 ## Example semantic labels
 - `Estimated rooftop PV capacity`

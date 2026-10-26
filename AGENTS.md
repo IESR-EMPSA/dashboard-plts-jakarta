@@ -28,7 +28,7 @@ Before planning or editing, read in this order:
 
 ## Engineering behavior
 - Before each phase: inspect current files, summarize changes and any blockers, and propose a small plan.
-- Complete approved stages sequentially and stop at the user's approved boundary. No unrequested commits, pushes, uploads, deployments, or external writes. The current follow-up explicitly authorizes documentation → preprocessing → local conversion/QA, stopping before application map integration.
+- Complete approved stages sequentially and stop at the user's approved boundary. No unrequested commits, pushes, uploads, deployments, or external writes. The latest approval covers milestone 3 local WebGIS/dashboard implementation, browser verification and documentation, including administrative maps, KPIs/charts, building details and basic responsive refinement. Stop after the local demo; no publication or external writes are authorized.
 - Favor typed data models, small Vue components, explicit loading/error/empty states, accessibility, and a responsive map-first UI.
 - Add validation/tests for transformations and filter behavior. Run existing typecheck, lint, tests and build where available; report which checks actually ran.
 - Leave a brief handoff: changed files, behavior, evidence of validation, known gaps, next milestone.

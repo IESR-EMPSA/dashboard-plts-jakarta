@@ -1,5 +1,7 @@
 # Data and archive stage handoff — 2026-10-26
 
+This is the stage 1 evidence snapshot. Subsequent milestone 2 data APIs and milestone 3 local application are complete; see FRONTEND_DATA_LAYER.md and LOCAL_DEMO.md for the current handoff. References below to starter UI and the next milestone describe the stage 1 boundary.
+
 Tasks A, B, C and verification are complete. The existing Vue starter UI is preserved. No dashboard component, application map, backend, upload, deployment, commit or push was added. Raw source files remain unchanged; archives/tool binaries/QA artifacts are ignored and outside public assets.
 
 ## Files and behavior

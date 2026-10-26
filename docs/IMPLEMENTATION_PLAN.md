@@ -1,22 +1,22 @@
 # Implementation milestones and status
 
-Complete only approved work, sequentially. The 2026-10-26 follow-up explicitly authorized Tasks A → B → C → D in one execution. Those tasks are complete. Stop before application MapLibre integration; no upload, deployment, commit or push is authorized.
+Complete only approved work, sequentially. Stage 1 Tasks A → B → C → D are complete. Milestone 2 is complete. The latest explicit milestone 3 approval also covers the local administrative map, dashboard/charts, building interactions and responsive refinement formerly numbered 4–7. These local features are now implemented and browser-validated. Stop after the local demo and documentation; publication remains a separate gate. No upload, deployment, commit or push is authorized.
 
 ## Current status
 
 | Stage | Status | Evidence / remaining dependency |
 |---|---|---|
-| 0 — Read-only audit | Complete | Actual files/schemas/totals/joins inspected; dev server and typechecks verified. Application visual baseline remains unreviewed. |
+| 0 — Read-only audit | Complete | Actual files/schemas/totals/joins inspected; dev server and typechecks verified. The local application now has desktop/mobile visual QA; original audit evidence is historical. |
 | A — Documentation | Complete | Actual inventory, schemas, normalization, decisions/reasons and remaining gates recorded. |
 | 1 / B — Data preprocessing | Complete | Nine deterministic outputs; all 6/44 joins; five aliases; 16 tests; null generation retained; content/transform provenance. |
 | C — Local conversion and geometry QA | Complete with documented source defect | Official CLI 1.31.2; PMTiles show/verify pass; 28 sampled tiles byte-identical; all zooms scanned; isolated browser reproduces artifact and tests polygon filtering. |
 | D — Verification | Passed available checks | Data freshness, 16 tests, three TypeScript projects, production build and archive/browser QA pass. No lint script is configured. |
-| 2 — Frontend data services | Pending separate approval | Types exist; cached/runtime-validated loaders, loading/error state, units and filter semantics remain. |
-| 3 — Application MapLibre/PMTiles integration | Not started | Separate approval; verified archive, explicit geometry strategy and correct MapLibre 6 worker delivery. |
-| 4 — Administrative boundaries/filters/choropleth | Pending | Stable joins, data services and working application map. |
-| 5 — KPIs and analytical charts | Pending | Supported scopes; exact administrative × type intersections need a new aggregate. |
-| 6 — Building details/interactions | Pending | Application adapter and representative source/browser checks. |
-| 7 — UX, performance and release | Pending | Device/accessibility tests, rights, remote hosting/cost/CORS/Range and separate publication approval. |
+| 2 — Frontend data services | Complete | Typed cached/integrity-checked loaders; lazy boundaries; scoped selectors; Vue store/composable; tile adapter; 41 tests (16 original + 25 frontend), typechecks, build and live HTTP/bundle smoke checks pass. |
+| 3 — Application MapLibre/PMTiles integration | Complete locally | Official pmtiles 4.5.0 protocol; Vite Range/206 endpoint; separate worker; Polygon predicate on both building layers; urban/island/overzoom browser QA. |
+| 4 — Administrative boundaries/filters/choropleth | Complete within expanded milestone 3 | 6/44 real selectors, resets, fit/highlight, null-aware capacity/energy/eligibility choropleth and legends. |
+| 5 — KPIs and analytical charts | Complete within expanded milestone 3 | Four KPIs, scoped region/district comparisons, seven-type chart, eligibility and PVOUT coverage. Exact administrative × type KPIs remain unsupported. |
+| 6 — Building details/interactions | Complete within expanded milestone 3 | Real mouse hover/click, stable feature state, adapter-backed fields, keyboard inspection and explicit missing PVOUT/energy. Original QGIS spot review remains pending. |
+| 7 — UX, performance and release | Local refinement complete; release pending | Responsive layout, methodology, no-key basemap/fallback, asynchronous map bundle, 47 tests, browser QA. Physical-device/accessibility/performance budgets, rights and remote hosting remain gates. |
 
 This numbering replaces the fixture-first roadmap because real exports are now available. Reasons and the superseded Blob preference are retained in DECISIONS_AND_RISKS.md.
 
@@ -30,25 +30,29 @@ Acceptance achieved: 1,747,249 all analyzed; 1,470,399 eligible; 1,466,275 with 
 
 Ignored output: data/processed/buildings_eligible_dki.pmtiles, 790,567,834 bytes (753.9442386627197 MiB), PMTiles v3, gzip MVT, z14–16, 2,659 addressed tiles, source-layer buildings_eligible_pvout. Official CLI show/verify pass; all 28 representative compressed tiles are unchanged.
 
-The source defect remains: type-0 records lack geometry and unfiltered MapLibre 6.15.0 fails to render affected tiles. Isolated local Chrome diagnostics confirm polygon-type filtering restores tested rendering and hover/click without modifying archives. This is a tested future style strategy, not an implemented application map or source repair. See GEOMETRY_QA.md for counts, screenshots, limits and the optional re-export proposal.
+The source defect remains: type-0 records lack geometry and unfiltered MapLibre 6.15.0 fails to render affected tiles. Isolated local Chrome diagnostics confirm polygon-type filtering restores tested rendering and hover/click without modifying archives. This was the isolated stage-C result. The same predicate is now implemented on both application building layers; the source archive remains unrepaired and unchanged. See GEOMETRY_QA.md for counts, screenshots, limits and the optional re-export proposal.
 
-## Next milestone 2 — Frontend data services
+## Completed milestone 2 — Frontend data services
 
-Implement cached, runtime-validated loaders with the existing types; explicit loading/error states; unit formatting; supported filter scopes/state; and compatible data-version checks. Verify null versus zero, denominators, parent/district reset and rejection of unsupported intersections. No dashboard components beyond the approved scope.
+Implemented in services/selectors/store/composable modules, reusing the original solar publication types unchanged and adding frontend-specific types. Summary and boundary files are checked against the manifest and compatible provenance. Failed loads are retryable; stale requests cannot overwrite refreshed state. Administrative × type KPIs return unsupported without fallback data; district/type MWp coverage remains unsupported. Null generation, original units and all-building denominators are preserved. No new dependency or application UI/map was added. See FRONTEND_DATA_LAYER.md for exact APIs, file inventory, test evidence and Vue consumption examples.
 
-## Milestone 3 — MapLibre and PMTiles integration
+## Completed milestone 3 — Local interactive WebGIS
 
-Separate approval required. Register the protocol once, deliver the actual MapLibre 6 worker correctly, inspect source-layer/IDs, apply an explicit polygon-type predicate to every building rendering layer, and test geometry-safe hover/click. Start locally with HTTP Range; test bounds and dense/island samples. Real PMTiles browser protocol, remote CORS/Range, mobile interaction and production performance remain unverified.
+The expanded approval implements the actual Vue app at http://localhost:5173/, reusing milestone 2. The official PMTiles protocol reads the validated archive through a serve-only bounded Range endpoint; no archive is copied into public or dist. MapLibre's worker is a separate Vite asset. Both fill and outline keep the explicit Polygon/eligible filter under every geographic/type combination.
 
-## Milestone 4 — Administrative map
+P0 delivers the layout, KPIs, map, all administrative filters and real building details. P1 adds scoped charts, null-aware choropleths/legends, layer controls, coverage and styling. P2 adds mobile layouts, keyboard inspection, reduced motion, basemap failure behavior, explicit empty-map state and a separately loaded WebGL bundle. Only pmtiles was added; no chart/state/UI dependency was needed.
+
+Acceptance evidence: 47/47 automated tests (all original 41 retained), data freshness, three TypeScript projects and production build pass. Actual-app Chrome QA validates every 6/44/7 selection against summaries, unsupported intersections, real urban mouse hover/click, island NoData, z18.3 overzoom of the z16 source, controls, methodology, 390 px mobile and intentional basemap failure, with no critical app errors. Archive SHA256 and nine publication files remain unchanged. See LOCAL_DEMO.md for reproducible commands, evidence and limitations.
+
+## Milestone 4 — Administrative map (implemented locally)
 
 Stable region/district selectors, dependent reset, fit/highlight/full-DKI reset and null-aware choropleth/legend. Acceptance: all 44 districts selectable, islands included, no ambiguous joins or statistical scope mismatch.
 
-## Milestone 5 — KPIs and charts
+## Milestone 5 — KPIs and charts (implemented locally)
 
 Four primary KPIs, region/district comparisons, seven-category breakdown and appropriately scoped count/MWp coverage. Validate against generated CSV-derived summaries. Administrative × type KPIs stay disabled until summary_kecamatan_jenis is exported from the all-building source with full eligibility denominators, capacity, covered energy and PVOUT counts; status-specific MWp is desirable.
 
-## Milestone 6 — Building detail
+## Milestone 6 — Building detail (implemented locally)
 
 Normalize raw useable_m2, category labels and missing energy, preserve string building_uid across clipped instances, and implement accessible hover/click/tap details. Validate against original QGIS samples and actual application behavior. Do not use tile features as summary denominators.
 
@@ -58,4 +62,6 @@ Methodology, attribution, responsive/accessibility/failure states and agreed dev
 
 ## Handoff
 
-See DATA_STAGE_REPORT.md for files, reconciliation and verification evidence. No source archive was modified, no records were dropped/re-exported, no application UI/map was added and no data was uploaded. Consider a source-clean archive only after the documented proposal is approved.
+See DATA_STAGE_REPORT.md for stage 1, FRONTEND_DATA_LAYER.md for milestone 2 and LOCAL_DEMO.md for the actual local application. Start with `pnpm.cmd dev`; use Cengkareng and Pulau Tidung quick navigation to inspect real footprints. The local demo is the approved stopping point.
+
+Next work requires an agreed release scope: original model/topology/vintage/rights review, physical device and accessibility checks, measured network/GPU performance, then separately authorized storage/deployment. R2 remains preferred but unconfigured. Exact administrative × type statistics require a new all-building-source aggregate. No archives or publication statistics were regenerated or altered; nothing was uploaded, deployed, committed or pushed.

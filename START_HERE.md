@@ -1,6 +1,6 @@
 # Codex context pack — how to use
 
-The existing Vue 3 + TypeScript + Vite/pnpm project is initialized; preserve it. The audit, documentation update, real-data preprocessing and local MBTiles conversion/diagnostic QA are complete. Application MapLibre integration has not started. See `docs/DATA_STAGE_REPORT.md` for results and `docs/IMPLEMENTATION_PLAN.md` for remaining milestones.
+The existing Vue 3 + TypeScript + Vite/pnpm project is initialized; preserve it. The audit, preprocessing, archive QA, milestone 2 data layer and approved milestone 3 local WebGIS/dashboard are complete. Run `pnpm.cmd dev` and open **http://localhost:5173/**. The official PMTiles protocol reads the unchanged ignored archive through a Vite-only Range endpoint; nothing is uploaded. See `docs/LOCAL_DEMO.md` for setup, QA evidence, file inventory and limitations.
 
 ## Initial prompt to paste into Codex
 
@@ -23,5 +23,7 @@ The existing Vue 3 + TypeScript + Vite/pnpm project is initialized; preserve it.
 - Keep one decision register in `docs/DECISIONS_AND_RISKS.md`; update it when the scope changes.
 - After finishing a phase, start a new Codex conversation if context becomes cluttered, and instruct it to re-read `AGENTS.md` and the current milestone.
 
-## Suggested first real coding milestone
-Milestone 1 is complete: nine typed/deterministic outputs, provenance, crosswalks and 16 passing tests. Local PMTiles show/verify and geometry diagnostics pass their checks; the source defect remains documented. Next is separately approved frontend data services, followed by application map integration. Commands/schemas are in `docs/DATA_PIPELINE.md`; geometry evidence is in `docs/GEOMETRY_QA.md`. On Windows use `pnpm.cmd` if PowerShell blocks `pnpm.ps1`; do not change execution policy.
+## Current handoff
+The local demo includes authoritative KPIs, all 6 regions / 44 districts, 7 building types, choropleths, scoped charts and real building details. Combined administrative × type KPIs stay unsupported. The original 41 tests plus 6 map/range tests pass. See `docs/IMPLEMENTATION_PLAN.md` and `docs/LOCAL_DEMO.md` for remaining release gates.
+
+On Windows use `pnpm.cmd` if PowerShell blocks `pnpm.ps1`; do not change execution policy. No environment variable is needed locally when the validated archive exists. Production preview requires a verified public archive URL; remote storage is still unconfigured. No deployment, upload, commit or push is authorized.
