@@ -7,9 +7,6 @@ export const BUILDING_SOURCE_LAYER = 'buildings_eligible_pvout'
 export const BUILDING_MIN_ZOOM = 14
 export const POLYGON_FILTER: ExpressionSpecification = ['==', ['geometry-type'], 'Polygon']
 export type MapMetric = 'capacity_mwp' | 'annual_gwh' | 'eligibility_rate'
-export const METRIC_LABELS: Record<MapMetric, string> = {
-  capacity_mwp: 'Kapasitas surya', annual_gwh: 'Energi tahunan', eligibility_rate: 'Kelayakan bangunan',
-}
 export function buildingFilter(data: ReadonlyDashboardData, filters: Readonly<DashboardFilters>): FilterSpecification {
   const conditions: ExpressionSpecification[] = [POLYGON_FILTER, ['==', ['get', 'eligible'], 1]]
   const region = data.adminCrosswalk.regions.find(r => r.id === filters.regionId)

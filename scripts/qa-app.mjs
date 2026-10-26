@@ -5,9 +5,10 @@ import { spawn } from 'node:child_process'
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { messages } from '../src/i18n/messages.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const qaRelative = 'data/processed/qa/viewport-layout'
+const qaRelative = 'data/processed/qa/localization'
 const qa = resolve(root, qaRelative)
 await mkdir(qa, { recursive: true })
 const profile = resolve(qa, `chrome-profile-${process.pid}`)
@@ -33,8 +34,25 @@ const positions = admin.features.flatMap(f => f.geometry.coordinates.flat(2))
 const fullBounds = [[Math.min(...positions.map(p=>p[0])),Math.min(...positions.map(p=>p[1]))],
   [Math.max(...positions.map(p=>p[0])),Math.max(...positions.map(p=>p[1]))]]
 const imageryResponses = []
-const fmt = (n, digits = 2) => n === null ? 'Tidak tersedia' : new Intl.NumberFormat('id-ID', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)
-const expectedKpis = row => [fmt(row.eligible_buildings, 0), fmt(row.capacity_mwp / 1000), fmt(row.annual_gwh === null ? null : row.annual_gwh / 1000), fmt(row.eligibility_rate === null ? null : row.eligibility_rate * 100)]
+const fmt = (n, digits = 2, locale = 'id') => n === null ? locale === 'id' ? 'Tidak tersedia' : 'Unavailable' : new Intl.NumberFormat(locale === 'id' ? 'id-ID' : 'en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)
+const expectedKpis = (row, locale = 'id') => [fmt(row.eligible_buildings, 0, locale), fmt(row.capacity_mwp / 1000, 2, locale), fmt(row.annual_gwh === null ? null : row.annual_gwh / 1000, 2, locale), fmt(row.eligibility_rate === null ? null : row.eligibility_rate * 100, 2, locale)]
+async function setLanguage(locale) {
+  await evaluate(`document.querySelector('[data-testid="language-${locale}"]').click()`)
+  await waitFor(`document.documentElement.lang==='${locale}'`, `${locale} language`)
+  await pause(50)
+  assert.equal(await evaluate(`document.querySelector('[data-testid="language-${locale}"]').getAttribute('aria-pressed')`), 'true')
+}
+async function checkEnglishText() {
+  // Inspect all text nodes, including select options, dialogs, tooltips and hidden menus.
+  const originals = Object.values(messages).filter(m => m.id !== m.en && !m.id.includes('{')).map(m => m.id)
+  const leftovers = await evaluate(`(()=>{const originals=new Set(${JSON.stringify(originals)}),walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),found=[];let n;while(n=walker.nextNode()){if(!['SCRIPT','STYLE'].includes(n.parentElement?.tagName)&&originals.has(n.textContent.trim()))found.push(n.textContent.trim())}for(const e of document.querySelectorAll('[title],[aria-label],[placeholder]'))for(const attr of ['title','aria-label','placeholder'])if(originals.has(e.getAttribute(attr)?.trim()))found.push(attr+': '+e.getAttribute(attr));return [...new Set(found)]})()`)
+  assert.deepEqual(leftovers, [], 'No untranslated Indonesian UI text in English mode')
+  assert.equal(await evaluate(`document.querySelector('.maplibregl-ctrl-zoom-in').getAttribute('aria-label')`), 'Zoom in')
+  assert.equal(await evaluate(`document.querySelector('.maplibregl-canvas').getAttribute('aria-label')`), messages['map.canvas'].en)
+}
+async function languageSnapshot() {
+  return evaluate(`(()=>{const m=window.__SOLAR_MAP__;return {filters:['region-filter','district-filter','type-filter'].map(id=>document.querySelector('[data-testid="'+id+'"]').value),selected:document.querySelector('[data-testid="building-id"]')?.textContent,center:m.getCenter().toArray(),zoom:m.getZoom(),bearing:m.getBearing(),pitch:m.getPitch(),filter:m.getFilter('solar-building-fill')}})()`)
+}
 async function choose(testId, value) {
   await evaluate(`new Promise(resolve=>{const e=document.querySelector('[data-testid="${testId}"]');e.value=${JSON.stringify(value)};e.dispatchEvent(new Event('change',{bubbles:true}));requestAnimationFrame(()=>requestAnimationFrame(resolve))})`)
 }
@@ -137,6 +155,17 @@ try {
   await screenshot('01-overview')
   console.log(JSON.stringify({ progress: 'initial', ...checks.initial }))
   checks.initialFullDkiExtent = await checkFullExtent('Initial extent')
+  assert(await evaluate(`!document.querySelector('.model-badge')`), 'Modeled-data badge removed')
+  await setLanguage('en')
+  await checkEnglishText()
+  assert.deepEqual(await kpiValues(), expectedKpis(regions.overall, 'en'))
+  assert.equal(await evaluate(`document.querySelector('h1').textContent`), messages['app.title'].en + '.')
+  assert.equal(await evaluate(`document.title`), messages['app.title'].en + ' | IESR')
+  assert((await evaluate(`document.querySelector('.maplibregl-ctrl-attrib').textContent`)).includes('Analysis: IESR'))
+  assert((await evaluate(`[...document.querySelectorAll('.admin-map-label')].map(e=>e.textContent).join(' ')`)).includes('THOUSAND ISLANDS'))
+  await screenshot('14-english-overview')
+  await setLanguage('id')
+  checks.languageOverview = { switchInNavbar: true, badgeRemoved: true, textAndAccessibility: true, localizedNumbers: true, mapLabelsAndAttribution: true }
   const brokenLabels = await evaluate(`[...document.querySelectorAll('[aria-labelledby]')].flatMap(e=>e.getAttribute('aria-labelledby').split(/\\s+/).filter(id=>!document.getElementById(id)))`)
   assert.deepEqual(brokenLabels, [], 'Accessible labels must reference existing elements')
   checks.accessibleLabelReferences = true
@@ -151,6 +180,11 @@ try {
     checks.viewportLayouts.push(await checkMapFitsScreen(`${width} × ${height}`))
     await checkFullExtent(`${width} × ${height} extent`)
     if (width===1366) await screenshot('12-laptop-map-without-page-scroll')
+    await setLanguage('en')
+    await checkMapFitsScreen(`English ${width} × ${height}`)
+    await checkFullExtent(`English ${width} × ${height} extent`)
+    if (width===1366) await screenshot('20-english-laptop-layout')
+    await setLanguage('id')
   }
   await command('Emulation.setDeviceMetricsOverride', {width:1440,height:900,deviceScaleFactor:1,mobile:false})
   await evaluate(`window.scrollTo(0,0)`); await pause(200)
@@ -186,10 +220,33 @@ try {
     await choose('region-filter', '')
     for (const type of types.types) { await choose('type-filter', type.id); assert.deepEqual(await kpiValues(), expectedKpis(type)) }
     checks.allBuildingTypes = types.types.length
+    await choose('type-filter', '')
+    await setLanguage('en')
+    for (const region of regions.regions) {
+      await choose('region-filter', region.id)
+      assert.deepEqual(await kpiValues(), expectedKpis(region, 'en'))
+      for (const district of districts.districts.filter(d=>d.region_id===region.id)) {
+        await choose('district-filter', district.id)
+        assert.deepEqual(await kpiValues(), expectedKpis(district, 'en'))
+      }
+    }
+    await choose('region-filter', '')
+    for (const type of types.types) { await choose('type-filter', type.id); assert.deepEqual(await kpiValues(), expectedKpis(type, 'en')) }
+    await checkEnglishText()
+    await setLanguage('id')
+    checks.englishAllSelections = { regions: 6, districts: 44, types: 7, allKpisReconciled: true }
     await choose('region-filter', regions.regions[0].id)
     assert.deepEqual(await kpiValues(), ['—','—','—','—'])
     assert(await evaluate(`!!document.querySelector('.unsupported-notice')`))
     checks.unsupportedCombination = true
+    const unsupportedBefore = await languageSnapshot()
+    await setLanguage('en')
+    assert.deepEqual(await languageSnapshot(), unsupportedBefore)
+    assert.deepEqual(await kpiValues(), ['—','—','—','—'])
+    assert((await evaluate(`document.querySelector('.unsupported-notice').innerText`)).includes('Combined area × building type statistics are unavailable.'))
+    await checkEnglishText()
+    await setLanguage('id')
+    checks.languageFilterPreservation = true
     await evaluate(`window.scrollTo(0,0)`); await pause(100)
     checks.unsupportedLayout = await checkMapFitsScreen('Unsupported filter notice')
     await screenshot('04-unsupported-combination')
@@ -198,6 +255,10 @@ try {
     await choose('region-filter', '')
     await evaluate(`document.querySelector('[data-testid="generation-chart-tab"]').click();document.querySelector('#analisis').scrollIntoView({block:'start'})`)
     await pause(300); await screenshot('05-analytics')
+    await setLanguage('en')
+    await checkEnglishText()
+    await screenshot('21-english-charts')
+    await setLanguage('id')
     assert.equal(await evaluate(`document.querySelectorAll('.type-bars .chart-row').length`), 7)
     checks.chartScopes = await evaluate(`({region:document.querySelector('.region-chart footer').innerText,types:document.querySelector('.chart-scope-note').innerText,eligibility:document.querySelector('.eligibility-chart footer').innerText})`)
     await evaluate(`document.querySelector('#workspace').scrollIntoView({block:'start'})`)
@@ -210,6 +271,11 @@ try {
     await command('Input.dispatchMouseEvent', { type: 'mouseMoved', x: hit.x, y: hit.y })
     await pause(100)
     assert(await evaluate(`!!document.querySelector('.map-tooltip')`), 'Building hover tooltip')
+    await setLanguage('en')
+    assert((await evaluate(`document.querySelector('.map-tooltip').innerText`)).includes(`Building ${hit.id}`))
+    await setLanguage('id')
+    assert((await evaluate(`document.querySelector('.map-tooltip').innerText`)).includes(`Bangunan ${hit.id}`))
+    checks.languageLiveTooltip = true
     await command('Input.dispatchMouseEvent', { type: 'mousePressed', x: hit.x, y: hit.y, button: 'left', clickCount: 1 })
     await command('Input.dispatchMouseEvent', { type: 'mouseReleased', x: hit.x, y: hit.y, button: 'left', clickCount: 1 })
     await waitFor(`!!document.querySelector('[data-testid="building-details"]')`, 'real building detail')
@@ -219,6 +285,18 @@ try {
     checks.urban.detail = await evaluate(`document.querySelector('[data-testid="building-details"]').innerText`)
     checks.iconAlignment.buildingClose = await checkIconCentered('[aria-label="Tutup detail bangunan"]')
     await screenshot('02-urban-building')
+    const selectedBefore = await languageSnapshot()
+    await evaluate(`window.__QA_MAP__=window.__SOLAR_MAP__;window.__QA_SOURCE__=window.__SOLAR_MAP__.getSource('solar-buildings');void 0`)
+    await setLanguage('en')
+    await checkEnglishText()
+    assert.deepEqual(await languageSnapshot(), selectedBefore, 'Language preserves camera, filters, and selected building')
+    assert(await evaluate(`window.__QA_MAP__===window.__SOLAR_MAP__&&window.__QA_SOURCE__===window.__SOLAR_MAP__.getSource('solar-buildings')`), 'Language retains map/source instances')
+    assert(await evaluate(`window.__SOLAR_MAP__.getFeatureState({source:'solar-buildings',sourceLayer:'buildings_eligible_pvout',id:${JSON.stringify(hit.id)}}).selected===true`))
+    assert((await evaluate(`document.querySelector('[data-testid="building-details"]').innerText`)).includes('Building footprint area'))
+    assert.equal(await evaluate(`document.querySelector('.detail-capacity strong').textContent.trim()`), fmt(hit.capacity_kwp, 2, 'en') + ' kWp')
+    await screenshot('15-english-building')
+    await setLanguage('id')
+    checks.languageBuildingPreservation = true
     console.log(JSON.stringify({ progress: 'urban', ...checks.urban }))
     await mouseClick('[aria-label="Tutup detail bangunan"]')
     await waitFor(`!document.querySelector('[data-testid="building-details"]')`, 'close building details')
@@ -235,6 +313,13 @@ try {
     checks.island = await evaluate(`({rendered:window.__SOLAR_MAP__.queryRenderedFeatures({layers:['solar-building-fill']}).length,detail:document.querySelector('[data-testid="building-details"]').innerText})`)
     assert(checks.island.detail.includes('Tidak tersedia'))
     await screenshot('03-island-building')
+    await setLanguage('en')
+    assert.equal(await evaluate(`document.querySelector('[data-testid="building-generation"]').textContent`), 'Unavailable')
+    assert((await evaluate(`document.querySelector('.coverage-warning').textContent`)).includes('PVOUT unavailable'))
+    await checkEnglishText()
+    await screenshot('16-english-missing-pvout')
+    await setLanguage('id')
+    checks.languageNullGeneration = true
     console.log(JSON.stringify({ progress: 'island', ...checks.island }))
     await choose('district-filter', districts.districts.find(d=>d.kecamatan==='Kepulauan Seribu Utara').id)
     assert.equal((await kpiValues())[2], 'Tidak tersedia')
@@ -267,6 +352,13 @@ try {
     assert(!(await evaluate(`document.querySelector('dialog').innerText`)).includes('Versi ringkasan'))
     assert(!(await evaluate(`document.querySelector('dialog').innerText`)).includes('dki-solar-'))
     checks.iconAlignment.methodologyClose = await checkIconCentered('[aria-label="Tutup metodologi"]')
+    await setLanguage('en')
+    assert(await evaluate(`document.querySelector('dialog').open`), 'Open dialog survives language switching')
+    await checkEnglishText()
+    assert((await evaluate(`document.querySelector('dialog').innerText`)).includes('A Roof Utilization Factor of 0.33'))
+    await screenshot('17-english-methodology')
+    await setLanguage('id')
+    checks.languageMethodology = true
     await screenshot('13-methodology-clean')
     await command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
     await command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
@@ -281,6 +373,9 @@ try {
     checks.fullDkiExtent = await checkFullExtent('Extent button after pitched/rotated detail view')
     await mouseClick('.maplibregl-ctrl-fullscreen')
     await waitFor(`document.fullscreenElement?.classList.contains('map-panel')`, 'native fullscreen')
+    await setLanguage('en')
+    assert(await evaluate(`document.fullscreenElement?.classList.contains('map-panel')`))
+    assert.equal(await evaluate(`document.querySelector('.maplibregl-ctrl-shrink').getAttribute('aria-label')`), 'Exit fullscreen')
     await pause(250)
     await evaluate(`document.querySelector('[data-testid="map-extent"]').click()`)
     await pause(200)
@@ -288,6 +383,9 @@ try {
     await screenshot('09-fullscreen-map')
     await mouseClick('.maplibregl-ctrl-shrink')
     await waitFor(`!document.fullscreenElement`, 'exit fullscreen')
+    assert.equal(await evaluate(`document.querySelector('.maplibregl-ctrl-fullscreen').getAttribute('aria-label')`), 'View map in fullscreen')
+    await setLanguage('id')
+    checks.languageFullscreen = true
     await pause(250)
     checks.fullscreen.extentRetainedAfterExit = (await checkFullExtent('Extent after leaving fullscreen')).fits
     await command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
@@ -304,6 +402,19 @@ try {
     checks.iconAlignment.mobileBuildingClose = await checkIconCentered('[aria-label="Tutup detail bangunan"]')
     await screenshot('07-mobile-map')
     checks.mobile = { width: 390, noHorizontalOverflow: true }
+    await setLanguage('en')
+    await checkEnglishText()
+    assert(await evaluate(`document.documentElement.scrollWidth<=window.innerWidth`))
+    await screenshot('18-english-mobile-building')
+    await evaluate(`window.scrollTo(0,0)`)
+    await screenshot('19-english-mobile-navbar')
+    for (const width of [320, 390]) {
+      await command('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: true })
+      await pause(150)
+      assert(await evaluate(`(()=>{const e=document.querySelector('.language-switcher').getBoundingClientRect();return e.left>=0&&e.right<=innerWidth&&document.documentElement.scrollWidth<=innerWidth})()`), `${width}px: language switch visible without overflow`)
+    }
+    await setLanguage('id')
+    checks.languageMobile = { widths: [320,390], noOverflow: true, navbarSwitchVisible: true }
     await evaluate(`document.querySelector('.reset-filters').click()`)
     await pause(150)
     assert.deepEqual(await kpiValues(), expectedKpis(regions.overall))
@@ -322,8 +433,11 @@ try {
     // Deliberately fail the external basemap; the local map, summaries and archive must remain usable.
     await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
     await command('Network.setBlockedURLs', { urls: ['*openfreemap.org*'] })
+    await setLanguage('en')
     await command('Page.reload', { ignoreCache: true })
     await waitFor(`!!window.__SOLAR_MAP__ && !!document.querySelector('.basemap-notice')`, 'neutral basemap fallback')
+    assert.equal(await evaluate(`document.documentElement.lang`), 'en', 'Language survives reload')
+    assert((await evaluate(`document.querySelector('.basemap-notice').textContent`)).includes('Research layers remain active.'))
     await navigateSample('urban')
     await evaluate(`document.querySelector('#workspace').scrollIntoView({block:'start'})`)
     await waitFor(`window.__SOLAR_MAP__.isSourceLoaded('solar-buildings') && window.__SOLAR_MAP__.queryRenderedFeatures({layers:['solar-building-fill']}).length>0`, 'local footprints with external basemap unavailable')
@@ -332,11 +446,18 @@ try {
     await command('Network.setBlockedURLs', { urls: ['*summary_wilayah.json*'] })
     await command('Page.reload', { ignoreCache: true })
     await waitFor(`!!document.querySelector('.app-alert')`, 'data loading error state')
+    assert((await evaluate(`document.querySelector('.app-alert').textContent`)).includes('Data could not be loaded.'))
+    await setLanguage('id')
+    assert((await evaluate(`document.querySelector('.app-alert').textContent`)).includes('Data belum dapat dimuat.'))
+    await setLanguage('en')
     assert.deepEqual(await kpiValues(), ['—','—','—','—'])
     await command('Network.setBlockedURLs', { urls: [] })
     await evaluate(`document.querySelector('.app-alert button').click()`)
     await waitFor(`!!window.__SOLAR_MAP__ && !document.querySelector('.app-alert')`, 'data retry recovery')
-    assert.deepEqual(await kpiValues(), expectedKpis(regions.overall))
+    assert.deepEqual(await kpiValues(), expectedKpis(regions.overall, 'en'))
+    await checkEnglishText()
+    await setLanguage('id')
+    checks.languagePersistenceAndErrors = true
     checks.dataErrorAndRetry = true
   }
   checks.noCriticalErrors = exceptions.length === 0 && consoleErrors.length === 0

@@ -26,6 +26,12 @@ Deliver an interactive research WebGIS for exploring **modeled rooftop photovolt
 - Methodology panel: data sources, assumptions, coverage, known exclusions, uncertainty/disclaimer.
 
 ## Behavioral specification
+### Interface language
+- Provide Indonesian and English through an ID/EN switch in the top navbar; remove the modeled-data badge.
+- Default to Indonesian for a new browser and restore a valid locally saved selection. Storage restrictions must not prevent language switching.
+- Translate all interface components, including detail panels, live tooltips, methodology, map controls, loading/error/empty states and accessible labels. Update document language/title and numeric/year-unit formatting together.
+- Preserve filters, statistical scope, selected buildings and the map camera when switching. Data IDs, canonical names, source measurements, null semantics and unsupported filter combinations remain unchanged.
+
 ### KPI sources
 - Overall and admin-unit KPIs come from static summary files, **never from the viewport's vector tiles**.
 - Formatting: MWp to GWp divide by 1,000; GWh to TWh divide by 1,000; percentages from ratio ×100. Do not silently round intermediate calculations.
@@ -66,6 +72,7 @@ Deliver an interactive research WebGIS for exploring **modeled rooftop photovolt
 - No mismatch between map filter labels and KPI scope.
 - Real PMTiles loads from the approved storage endpoint with verified 206 Range requests and browser CORS; known geometry issues have an evidenced rendering/interaction strategy.
 - Tested desktop and mobile UI, no console errors, passing typecheck/build.
+- Both languages reconcile all 6/44/7 statistical selections, preserve active interactions and remain usable without horizontal overflow on mobile. See LOCALIZATION.md.
 
 ## Current implementation status
 The approved milestone 3 local demo implements the actual MapLibre/official PMTiles protocol, local Range/206 delivery, geometry-safe footprints, administrative choropleths/filters, authoritative KPIs/charts and real building details. All six regions, 44 districts and seven type KPI scopes are browser-validated against the unchanged generated summaries. Missing generation and unsupported administrative × type KPIs remain explicit. Basic desktop/mobile and basemap-failure checks pass. See LOCAL_DEMO.md. Original model/topology/licensing, physical device/performance certification, remote hosting/CORS and publication remain pending; no upload/deployment is authorized.

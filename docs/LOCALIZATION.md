@@ -1,0 +1,27 @@
+# Interface localization
+
+The dashboard supports Indonesian (`id`) and English (`en`). The **ID / EN** switch is in the top navbar, replacing the modeled-data badge. Indonesian is the initial language for a new browser. A valid saved preference takes priority; the application does not infer a language from the operating system.
+
+## Implementation
+
+- `src/i18n/messages.ts` contains a typed, paired message catalog. Each key must supply both languages. Parameters have matching names across languages; messages are rendered as plain text, never injected HTML.
+- `src/i18n/index.ts` creates an isolated Vue reactive context and exposes `useI18n()`, `t()`, `n()`, and display-name/error helpers. No localization dependency was added.
+- `src/main.ts` provides the context. `LanguageSwitcher.vue` uses labeled buttons with `aria-pressed`; the chosen language is saved as `jakarta-solar-language` in local storage. Blocked storage falls back to session-only selection. Invalid saved values fall back to Indonesian.
+- `App.vue` updates the document language, page title, and description. Components translate navigation, filters, metric cards, coverage, charts, legends, building details, methodology, tooltips, loading/error/empty states, units containing “year,” and accessibility labels.
+- Number display uses `Intl.NumberFormat` with `id-ID` or `en-US`. Source units and measurement precision remain unchanged. Display conversions still use the existing unit helpers. Null energy is translated as **Tidak tersedia / Unavailable**, never zero.
+- Region and category names are translated only for display. District proper names remain unchanged, except the descriptive North/South Thousand Islands labels. Dataset IDs, canonical/raw names, crosswalks, map expressions, and summary scopes are unchanged. Institutional/product names and third-party basemap credits remain proper names; third-party basemap labels are controlled by the provider.
+- `SolarMap.vue` keeps raw tooltip values so an already-open tooltip updates reactively. DOM markers, map-source attribution, canvas descriptions, and native zoom/fullscreen/attribution button labels update without recreating the map. Fullscreen events refresh button labels after MapLibre updates them. This adapter uses public source properties, events, and control elements; it does not mutate private MapLibre locale fields.
+
+Changing language retains the selected region, district, category, building, camera, source instances, layer visibility, and metric. It does not fetch translated copies of the statistical datasets or calculate statistics from map features. Unsupported administrative area × building type statistics remain unsupported.
+
+## Maintenance and verification
+
+Use `useI18n()` for every new user-facing string and numeric display. Add both translations to the catalog, use parameters for variable content, and keep data values separate from display labels. Technical validation diagnostics stay in the service errors and developer console; the interface shows translated recovery guidance.
+
+`pnpm test` includes seven localization tests covering catalog completeness/parameter parity, reactive changes, formatting/null semantics, all published administrative/category labels, preference persistence, blocked storage, and error messages. All 48 pre-existing tests are retained.
+
+`node scripts/qa-app.mjs` exercises the actual local application in Chrome, including every 6-region/44-district/7-category selection in both languages, existing tooltips/details, null generation, unsupported filters, native fullscreen, mobile layout, stored preferences, and intentional loading failures. Reports and screenshots go to ignored `data/processed/qa/localization/`. The full run requires the local development server, validated PMTiles, and Chrome. Headless software WebGL does not substitute for physical-device testing.
+
+Run `pnpm typecheck`, `pnpm build`, and `pnpm data:check` as well. The data check verifies that all nine generated publication files still match the validated release. No archive conversion, data regeneration, storage upload, deployment, or dependency change is part of this feature.
+
+Verified locally: all **55 tests pass** (48 existing plus 7 localization tests), TypeScript checks pass, and actual-app Chrome QA completes with no runtime exceptions or critical console errors. Both languages retain full-DKI extent and fit the desktop map at 1440×900, 1366×768, 1280×720, 1280×600 and 1920×1080; the navbar language control remains visible at 320 and 390 px. Intentional provider/data failures recover with translated messages. The publication freshness check retains the original nine outputs and `dki-solar-2edaec0ca52d964b` release. Production builds retain the pre-existing MapLibre chunk-size advisory.

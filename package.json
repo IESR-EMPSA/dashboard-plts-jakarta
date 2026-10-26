@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "data:prepare": "node scripts/prepare-data.ts",
     "data:check": "node scripts/prepare-data.ts --check",
-    "test": "node --test tests/data-pipeline.test.ts tests/frontend-data.test.ts tests/map-integration.test.ts",
+    "test": "node --test tests/data-pipeline.test.ts tests/frontend-data.test.ts tests/map-integration.test.ts tests/localization.test.ts",
     "typecheck": "vue-tsc --noEmit --incremental false -p tsconfig.app.json && tsc --noEmit --incremental false -p tsconfig.node.json && tsc -p tsconfig.data.json"
   },
   "dependencies": {

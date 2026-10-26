@@ -48,6 +48,7 @@
 - Dataset versions must be pinned together. A new PMTiles alone without recomputing JSON creates inconsistent dashboard results.
 
 ## Change log
+- 2026-10-26: User-approved Indonesian/English interface with a persistent navbar language switch; modeled-data badge removed. Existing Vue reactivity and a typed paired catalog cover all components, map controls, tooltips/details, number/null formatting, methodology and recovery messages. Statistical datasets, canonical IDs and archive geometry remain unchanged. See LOCALIZATION.md.
 - 2026-10-26: User-requested visual cleanup and map refinement: specified decorative/text elements removed; full-DKI extent corrected by removing the restrictive camera bounds; native fullscreen and Google Imagery added. All 48 tests, typechecks/build, data freshness and updated desktop/mobile/landscape browser checks pass. No production data/archive modifications or publication actions.
 - 2026-10-26: Expanded milestone 3 local demo completed: official PMTiles protocol, local Range/206, geometry-safe map, administrative filters/choropleths, KPI/chart scopes, real building details and responsive UI. All 47 tests, typechecks, data freshness, production build and actual-app Chrome regression pass. Raw/public data and archives remain unchanged; no upload/deployment/commit/push. See LOCAL_DEMO.md.
 - 2026-10-26: Initial Codex context pack drafted from project discussion, awaiting repo and exported-data validation.

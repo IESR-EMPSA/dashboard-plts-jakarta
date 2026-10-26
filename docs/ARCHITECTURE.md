@@ -97,6 +97,10 @@ The native MapLibre FullscreenControl targets the whole map panel, retaining con
 
 Vite watches application sources but excludes raw/processed archives, QA Chrome profiles and local tools; otherwise Windows can crash its watcher on the browser’s locked Cookies file. The server binds localhost on strict port 5173.
 
+## Interface localization
+
+The application provides an isolated reactive Indonesian/English context using the existing Vue APIs. A typed paired catalog drives all components, display names, null-safe number formatting, recovery messages and accessibility labels. The navbar switch persists a valid preference locally and does not affect dataset identity, statistical scope or map filters. Native map labels, DOM markers and attribution update in place, retaining sources, camera, selected features and fullscreen. See [LOCALIZATION.md](LOCALIZATION.md) for contracts and regression coverage.
+
 ## Hosting fallback
 R2 is the preferred candidate, pending measured Range/CORS/performance/cost and explicit publication approval. Storage remains replaceable through the public URL without rewriting Vue. No upload is authorized in the current stage.
 

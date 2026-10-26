@@ -16,7 +16,7 @@ Complete only approved work, sequentially. Stage 1 Tasks A → B → C → D are
 | 4 — Administrative boundaries/filters/choropleth | Complete within expanded milestone 3 | 6/44 real selectors, resets, fit/highlight, null-aware capacity/energy/eligibility choropleth and legends. |
 | 5 — KPIs and analytical charts | Complete within expanded milestone 3 | Four KPIs, scoped region/district comparisons, seven-type chart, eligibility and PVOUT coverage. Exact administrative × type KPIs remain unsupported. |
 | 6 — Building details/interactions | Complete within expanded milestone 3 | Real mouse hover/click, stable feature state, adapter-backed fields, keyboard inspection and explicit missing PVOUT/energy. Original QGIS spot review remains pending. |
-| 7 — UX, performance and release | Local refinement complete; release pending | Responsive layout, methodology, basemap/fallback, asynchronous map bundle, 48 tests, browser QA and repository cleanup. Physical-device/accessibility/performance budgets, rights and remote hosting remain gates. |
+| 7 — UX, performance and release | Local refinement complete; release pending | Responsive layout, Indonesian/English localization, methodology, basemap/fallback, asynchronous map bundle, 55 tests, browser QA and repository cleanup. Physical-device/accessibility/performance budgets, rights and remote hosting remain gates. |
 
 This numbering replaces the fixture-first roadmap because real exports are now available. Reasons and the superseded Blob preference are retained in DECISIONS_AND_RISKS.md.
 
@@ -67,6 +67,8 @@ Implemented the user's screenshot-based removals, corrected full-DKI extent (inc
 Verification: 48 tests (all previous 47 plus the actual six-region extent invariant), data freshness, TypeScript and production build pass. Updated actual-app QA checks real imagery responses, native fullscreen and full bounds on desktop/mobile/landscape, alongside all prior KPI/filter/building tests. Artifacts are in ignored data/processed/qa/ui-refinement; see LOCAL_DEMO.md.
 
 ## Handoff
+
+Localization follow-up: the interface supports Indonesian and English using a typed, paired catalog and a navbar ID/EN control. The modeled-data badge is removed. Language changes preserve filters, metric scope, the map camera and selected building, with browser persistence and localized number/null formatting. Map controls, live tooltips, detail panels, methodology, and error states are included. No new dependencies or data/archive changes. See LOCALIZATION.md for the implementation and verification commands.
 
 Documentation follow-up: README and the repository review are now written in English. The requested next building-tile zoom range is **13–18**; the archive and viewer update has not been performed. Once the replacement archive is available, inspect its zoom metadata, confirm compatible statistics/provenance, align the source and rendering zoom settings, and rerun geometry, Range, and browser QA. Earlier z14–16 measurements remain historical evidence.
 

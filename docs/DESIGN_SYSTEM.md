@@ -4,7 +4,7 @@
 - Credible research dashboard, not a generic SaaS admin console.
 - Map is the primary canvas. Statistics are supporting evidence.
 - Clean, spacious, professional; information hierarchy over decorative widgets.
-- Consistent units and readable numeric formatting (Indonesian locale optional; choose one locale consistently).
+- Consistent units and readable numeric formatting using the selected interface language (`id-ID` or `en-US`).
 - Distinguish missing/uncertain PVOUT from zero and from ineligible buildings.
 
 ## Layout
@@ -35,13 +35,17 @@
 - Show canonical type labels. Detail `usable_m2` adapts raw `useable_m2`; omitted tile energy displays unavailable. These adapters do not change the model.
 
 ## Implementation status
-Milestone 3 implements a local Indonesian-language research UI: light paper surfaces, dark green text, teal capacity footprints, amber missing-PVOUT footprints, four KPI cards, compact filter/coverage sidebar, primary map, scoped analytical charts and methodology dialog. Number formatting uses id-ID; GWp/TWh KPIs use two decimal places and precise source-unit values remain accessible.
+Milestone 3 established the local research UI: light paper surfaces, dark green text, teal capacity footprints, amber missing-PVOUT footprints, four KPI cards, compact filter/coverage sidebar, primary map, scoped analytical charts and methodology dialog. The approved localization follow-up supports Indonesian and English with matching number formatting; GWp/TWh KPIs use two decimal places and precise source-unit values remain accessible.
 
 Desktop prioritizes the map with a 230 px sidebar (244 px on wide screens and 216 px on medium desktops). Compact header, title, KPI and caption spacing gives the map more vertical room while keeping the overview within one screen. Mobile uses two-column KPIs, inline stacked filters, full-width map and a scrollable building bottom sheet. A filter drawer/collapsible desktop sidebar remains a possible later refinement. Native controls, focus outlines, skip link, keyboard inspection, Escape dismissal and reduced-motion behavior are implemented. Chromium screenshots and automated interaction checks cover desktop and 390 px mobile; physical touch and broader accessibility audits remain pending.
 
 Regional comparison toggles GWp/TWh and follows the selected parent region; its scope is explicit. The seven-category capacity chart stays DKI-wide in MWp. Eligibility and PVOUT count coverage follow supported KPI scope; unsupported intersections show an explanation. No chart substitutes zero for NULL energy.
 
 Vintage, rights, full source-model verification and production device/network performance remain release gates. See LOCAL_DEMO.md.
+
+## Interface language
+
+The top navbar includes a compact **ID / EN** button group in place of the modeled-data badge. Indonesian is the default; a valid saved preference is restored. Active buttons use `aria-pressed` and a raised light background. The switch remains visible beside the methodology control on narrow screens. Both languages cover the full interface, including methodology, tooltips, detail panels, recovery states and accessible labels. Longer English text must preserve the one-screen map layout and avoid mobile horizontal overflow. Numeric grouping, decimal separators, and year-based display units follow the selected language. See [LOCALIZATION.md](LOCALIZATION.md).
 
 ## Approved visual follow-up
 

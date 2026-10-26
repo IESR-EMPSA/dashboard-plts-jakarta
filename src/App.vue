@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { useI18n } from './i18n/index.ts'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
 import { useDashboard } from './composables/useDashboard.ts'
 import type { NormalizedBuildingProperties } from './types/dashboard.ts'
 import AppIcon from './components/AppIcon.vue'
@@ -10,6 +11,14 @@ import AdminFilters from './components/filters/AdminFilters.vue'
 import MapLoading from './components/map/MapLoading.vue'
 import BuildingDetails from './components/map/BuildingDetails.vue'
 import MethodologyPanel from './components/methodology/MethodologyPanel.vue'
+import LanguageSwitcher from './components/LanguageSwitcher.vue'
+
+const { t, errorMessage, locale, regionName, districtName, typeName } = useI18n()
+watchEffect(() => {
+  document.documentElement.lang = locale.value
+  document.title = `${t('app.title')} | IESR`
+  document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'))
+})
 
 // Keep the data dashboard usable while the larger WebGL module loads separately.
 const SolarMap = defineAsyncComponent({ loader: () => import('./components/map/SolarMap.vue'),
@@ -24,8 +33,8 @@ const scope = computed(() => {
   const district = data.value?.districts.districts.find(d => d.id === filters.districtId)
   const region = data.value?.regions.regions.find(r => r.id === filters.regionId)
   const type = data.value?.types.types.find(t => t.id === filters.typeId)
-  const area = district?.kecamatan ?? region?.wilayah ?? 'Seluruh DKI Jakarta'
-  return type ? `${area} · ${type.jenis_group}` : area
+  const area = district ? districtName(district.kecamatan) : region ? regionName(region.wilayah) : t('common.allJakarta')
+  return type ? `${area} · ${typeName(type.jenis_group)}` : area
 })
 async function reset() { dashboard.resetFilters(); selected.value = null; await nextTick(); solarMap.value?.resetView() }
 function navigate(id: string) { activeTab.value = id; document.getElementById(id === 'map' ? 'map-overview' : 'analisis')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }) }
@@ -35,21 +44,21 @@ onBeforeUnmount(() => window.removeEventListener('keydown', escape))
 </script>
 
 <template>
-  <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+  <a class="skip-link" href="#main-content">{{ t('app.skip') }}</a>
   <header class="app-header">
     <a class="brand" href="#main-content" aria-label="IESR Jakarta Solar Explorer"><span class="brand-emblem"><AppIcon name="sun" :size="23" /></span><span class="brand-name">IESR<span>JAKARTA SOLAR EXPLORER</span></span></a>
-    <nav class="header-nav" aria-label="Navigasi utama"><button :aria-current="activeTab === 'map' ? 'page' : undefined" @click="navigate('map')">Peta & potensi</button><button :aria-current="activeTab === 'analisis' ? 'page' : undefined" @click="navigate('analisis')">Analisis data</button></nav>
-    <div class="header-actions"><span class="model-badge"><span class="status-dot" />Data termodelkan</span><button class="button button-outline" @click="methodology?.open()"><AppIcon name="info" :size="16" />Metodologi</button></div>
+    <nav class="header-nav" :aria-label="t('app.nav')"><button :aria-current="activeTab === 'map' ? 'page' : undefined" @click="navigate('map')">{{ t('app.mapTab') }}</button><button :aria-current="activeTab === 'analisis' ? 'page' : undefined" @click="navigate('analisis')">{{ t('app.analysisTab') }}</button></nav>
+    <div class="header-actions"><LanguageSwitcher /><button class="button button-outline" @click="methodology?.open()" :aria-label="t('app.methodology')" :title="t('app.methodology')"><AppIcon name="info" :size="16" />{{ t('app.methodology') }}</button></div>
   </header>
   <main id="main-content">
-    <section id="map-overview" class="map-overview" aria-label="Ringkasan dan peta potensi surya">
-      <section class="intro-row"><h1>Potensi Surya Atap Jakarta<span>.</span></h1><div class="intro-context"><AppIcon name="pin" :size="18" /><div><strong>Daerah Khusus Ibukota Jakarta</strong><span>{{ data ? `${data.regions.regions.length} kabupaten / kota · ${data.districts.districts.length} kecamatan` : 'Menyiapkan cakupan wilayah…' }}</span></div></div></section>
-      <div v-if="status === 'error'" class="app-alert" role="alert"><AppIcon name="info" /><div><strong>Data belum dapat dimuat.</strong><p>{{ error?.message }}</p></div><button class="button button-outline" @click="dashboard.refresh()">Coba lagi</button></div>
-      <div v-if="kpis.status === 'unsupported'" class="unsupported-notice" role="status"><AppIcon name="info" :size="18" /><p>Statistik gabungan <strong>wilayah × jenis bangunan</strong> belum tersedia. Peta tetap mengikuti pilihan Anda; KPI tidak dihitung dari bangunan yang terlihat.</p><button class="text-button" @click="dashboard.setBuildingType(null)">Lihat statistik wilayah <AppIcon name="arrow" :size="15" /></button></div>
+    <section id="map-overview" class="map-overview" :aria-label="t('app.overview')">
+      <section class="intro-row"><h1>{{ t('app.title') }}<span>.</span></h1><div class="intro-context"><AppIcon name="pin" :size="18" /><div><strong>{{ t('app.location') }}</strong><span>{{ data ? t('app.areaCounts', { regions: data.regions.regions.length, districts: data.districts.districts.length }) : t('app.preparingAreas') }}</span></div></div></section>
+      <div v-if="status === 'error'" class="app-alert" role="alert"><AppIcon name="info" /><div><strong>{{ t('app.dataError') }}</strong><p>{{ errorMessage(error) }}</p></div><button class="button button-outline" @click="dashboard.refresh()">{{ t('app.retry') }}</button></div>
+      <div v-if="kpis.status === 'unsupported'" class="unsupported-notice" role="status"><AppIcon name="info" :size="18" /><p>{{ t('app.unsupported') }}</p><button class="text-button" @click="dashboard.setBuildingType(null)">{{ t('app.regionalStats') }} <AppIcon name="arrow" :size="15" /></button></div>
       <KpiCards :selection="kpis" :loading="status === 'loading' || status === 'idle'" />
-      <div class="generation-caption"><AppIcon name="info" :size="14" /><span>Estimasi listrik hanya mencakup bangunan dengan PVOUT. Nilai tidak tersedia tidak dianggap nol.</span></div>
+      <div class="generation-caption"><AppIcon name="info" :size="14" /><span>{{ t('app.energyCaveat') }}</span></div>
       <section id="workspace" class="workspace">
-        <aside class="analysis-sidebar" tabindex="0" aria-label="Filter wilayah dan cakupan data"><AdminFilters @reset="reset" @methodology="methodology?.open()" /><CoverageCard :selection="kpis" :scope="scope" /></aside>
+        <aside class="analysis-sidebar" tabindex="0" :aria-label="t('app.sidebar')"><AdminFilters @reset="reset" @methodology="methodology?.open()" /><CoverageCard :selection="kpis" :scope="scope" /></aside>
         <SolarMap v-if="data" ref="solarMap" :selected-id="selected?.building_uid ?? null" :scope="scope" @select="selected = $event">
           <BuildingDetails v-if="selected" :building="selected" @close="selected = null" />
         </SolarMap>

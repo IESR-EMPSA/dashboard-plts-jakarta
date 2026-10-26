@@ -1,15 +1,16 @@
 # Jakarta Rooftop Solar Potential WebGIS
 
-A research dashboard for exploring **modeled technical rooftop solar PV potential in DKI Jakarta**. Eligible building footprints appear on the map, while KPIs and charts use validated statistical summaries. The application visualizes existing GIS analysis results rather than an inventory of installed PV capacity.
+A research dashboard for exploring **modeled technical rooftop solar PV potential in DKI Jakarta**. Eligible building footprints appear on the map, while key metrics and charts use validated statistical summaries. The application visualizes existing GIS analysis results rather than an inventory of installed PV capacity.
 
 ## Features and architecture
 
 - MapLibre visualization of eligible building polygons delivered through PMTiles.
 - **Planned building-tile zoom range: 13–18.** The archive and viewer configuration will be aligned when the tile update is available.
 - Filters for 6 administrative regions, 44 districts, and 7 building categories, including Kepulauan Seribu.
-- KPIs for capacity, PVOUT-covered annual generation, eligible building count, and eligibility rate.
+- Key metrics for capacity, PVOUT-covered annual generation, eligible building count, and eligibility rate.
 - Choropleths, region/district comparisons, building-category charts, and PVOUT coverage.
 - Building details, fullscreen, OpenFreeMap/Google Imagery basemaps, and a responsive layout.
+- Indonesian and English throughout the interface, with an **ID / EN** switch in the top navbar. The selected language is remembered in the browser; numbers, map controls, tooltips, building details, and methodology update together. See [localization](docs/LOCALIZATION.md).
 
 Stack: **Vue 3 + TypeScript + Vite, MapLibre GL JS, and PMTiles**. Statistics and administrative boundaries are static files in `public/data/`. There is no application backend or PostGIS. The Vite middleware for local archive byte-range delivery runs only during development.
 
@@ -49,7 +50,7 @@ Open the preview URL printed by Vite. Preview/production does not expose the loc
 - Eligibility denominator: **1,747,249 analyzed buildings**, of which **1,470,399** are eligible for the building layer.
 - **1,466,275** eligible buildings have PVOUT; **4,124** do not. Unavailable annual generation remains `null` and is never replaced with zero.
 - Source measurements use MWp for capacity and GWh/year for generation. GWp/TWh conversions happen only for display.
-- KPIs are never calculated from visible tiles. Exact **administrative area × building type** statistics are unavailable and explicitly marked unsupported. Building-category charts retain their DKI-wide scope.
+- Key metrics are never calculated from visible tiles. Exact **administrative area × building type** statistics are unavailable and explicitly marked unsupported. Building-category charts retain their DKI-wide scope.
 - Do not edit generated `public/data/` files manually. The manifest, crosswalks, statistics, and geometries must belong to a compatible processing release.
 
 Private inputs for preprocessing and the full test suite must be available in `data/raw/`:
@@ -70,11 +71,11 @@ This directory is ignored by Git. See the [data contract](docs/DATA_CONTRACT.md)
 |---|---|---|
 | `pnpm typecheck` | Check Vue, Vite configuration, scripts, and TypeScript tests | No private data required |
 | `pnpm build` | Build the static frontend into `dist/` | Checkout and dependencies; archives are not bundled |
-| `node --test tests/frontend-data.test.ts tests/map-integration.test.ts` | Run 32 data-service, filter, and middleware tests | `public/data/`; no private inputs |
-| `pnpm test` | Run all 48 tests, including the data pipeline | All `data/raw/` inputs and crosswalks |
+| `node --test tests/frontend-data.test.ts tests/map-integration.test.ts tests/localization.test.ts` | Run 39 data-service, filter, middleware, and localization tests | `public/data/`; no private inputs |
+| `pnpm test` | Run all 55 tests, including the data pipeline | All `data/raw/` inputs and crosswalks |
 | `pnpm data:check` | Check all nine generated outputs without rewriting them | All `data/raw/` inputs and crosswalks |
 | `pnpm data:prepare` | Validate inputs and regenerate public outputs | Approved data-processing work only |
-| `node scripts/qa-app.mjs` | Test the actual browser app: map, Range, filters, KPIs, layout, and icons | Development server, local PMTiles, Chrome |
+| `node scripts/qa-app.mjs` | Test the actual browser app: both languages, map, Range, filters, key metrics, layout, and icons | Development server, local PMTiles, Chrome |
 
 Application QA uses an existing Chrome installation; `CHROME_PATH` can point to another location. The default browser path follows the Windows Chrome installation. JSON reports, screenshots, and temporary profiles are written under `data/processed/qa/` and remain outside Git. No linter is configured.
 
