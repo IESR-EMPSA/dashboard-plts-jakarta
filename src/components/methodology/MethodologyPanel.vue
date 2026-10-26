@@ -11,7 +11,7 @@ defineExpose({ open: () => dialog.value?.showModal() })
 
 <template>
   <dialog ref="dialog" class="methodology-dialog" aria-labelledby="methodology-title" @click="event => { if (event.target === dialog) dialog?.close() }">
-    <header><div><span class="section-eyebrow">{{ t('method.eyebrow') }}</span><h2 id="methodology-title">{{ t('method.title') }}</h2></div><button class="icon-button" :aria-label="t('method.close')" @click="dialog?.close()"><AppIcon name="close" /></button></header>
+    <header><h2 id="methodology-title">{{ t('method.title') }}</h2><button class="icon-button" :aria-label="t('method.close')" @click="dialog?.close()"><AppIcon name="close" /></button></header>
     <div class="methodology-content">
       <p class="methodology-lead">{{ t('method.lead') }}</p>
       <h3>{{ t('method.process') }}</h3>

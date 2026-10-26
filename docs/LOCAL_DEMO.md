@@ -1,5 +1,7 @@
 # Milestone 3 — Local WebGIS implementation and verification
 
+Current archive update: the application now uses the separate GeoPackage-verified repaired z13–18 PMTiles. See [ARCHIVE_REPAIR_REPORT.md](ARCHIVE_REPAIR_REPORT.md) for current paths, source verification, exact corrections, browser checks and rollback. The milestone-3 z14–16 archive measurements below are historical evidence.
+
 The approved local demo is implemented in the existing Vue project. This stage includes the administrative map, KPIs/charts, building details and basic responsive refinement from the earlier milestone 4–7 breakdown. It stops before remote publication.
 
 ## Run and explore

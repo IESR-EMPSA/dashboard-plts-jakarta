@@ -1,5 +1,7 @@
 # Building archive geometry QA
 
+Current delivery note: the separate z13–18 attribute repair is verified against the original GeoPackage in [ARCHIVE_REPAIR_REPORT.md](ARCHIVE_REPAIR_REPORT.md). It preserves every original MVT geometry byte, including empty type-0 instances, and retains the proven Polygon predicate. The z14–16 investigations below remain historical evidence and have not been relabeled as measurements of the new archive.
+
 This document preserves the stage-C isolated archive diagnostic. The later milestone 3 application now uses its Polygon predicate on both building layers and has separate official-protocol/Range/browser evidence in LOCAL_DEMO.md. Remote hosting and source-geometry repair remain outside the completed local scope.
 
 ## Audit baseline and scope

@@ -2,10 +2,11 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { archiveMiddleware, MAX_RANGE_BYTES, parseByteRange } from '../scripts/dev/pmtilesPlugin.ts'
+import { archiveMiddleware, LOCAL_PMTILES_PATH, MAX_RANGE_BYTES, parseByteRange } from '../scripts/dev/pmtilesPlugin.ts'
 import { buildingFilter, collectionBounds, geometryBounds, POLYGON_FILTER, BUILDING_SOURCE_LAYER } from '../src/map/mapModel.ts'
 import { createSolarDataService } from '../src/services/solarDataService.ts'
 import { numberId } from '../src/utils/presentation.ts'
+import { viewportHasFeatures } from '../src/map/renderedFeatures.ts'
 
 const service = createSolarDataService({ fetch: async input => {
   const name = new URL(String(input), 'https://local.test').pathname.split('/').at(-1)!
@@ -13,6 +14,27 @@ const service = createSolarDataService({ fetch: async input => {
 } })
 const data = await service.loadSummaries()
 const empty = { regionId: null, districtId: null, typeId: null }
+
+test('visual existence check finds tiny features at every viewport edge and never queries outside the viewport', () => {
+  for (const [width, height] of [[1, 1], [390, 611], [1107.5, 585.25]]) {
+    for (const point of [[0, 0], [width, 0], [0, height], [width, height], [width / 2, height / 2], [width - 0.01, height / 3]]) {
+      assert(viewportHasFeatures(width!, height!, ([a, b]) => {
+        assert(a[0] >= 0 && a[1] >= 0 && b[0] <= width! && b[1] <= height!)
+        return point[0]! >= a[0] && point[0]! <= b[0] && point[1]! >= a[1] && point[1]! <= b[1] ? [point] : []
+      }))
+    }
+    assert.equal(viewportHasFeatures(width!, height!, () => []), false)
+  }
+  assert.equal(viewportHasFeatures(0, 500, () => { throw Error('Hidden viewport should not be queried') }), false)
+})
+
+test('dense-view existence check stops after its first match with bounded query area', () => {
+  let calls = 0
+  assert(viewportHasFeatures(1440, 900, ([a, b]) => {
+    calls++; assert(b[0] - a[0] <= 128 && b[1] - a[1] <= 128); return [{}]
+  }))
+  assert.equal(calls, 1)
+})
 
 test('every composed building filter retains the proven Polygon predicate and eligible-only scope', () => {
   for (const region of data.adminCrosswalk.regions) {
@@ -72,18 +94,19 @@ test('local middleware streams exact bytes, rejects whole archive and arbitrary 
   assert(address && typeof address !== 'string')
   const base = `http://127.0.0.1:${address.port}`
   try {
-    const range = await fetch(`${base}/_local/buildings.pmtiles`, { headers: { Range: 'bytes=0-15' } })
+    const range = await fetch(`${base}${LOCAL_PMTILES_PATH}`, { headers: { Range: 'bytes=0-15' } })
     assert.equal(range.status, 206)
     assert.equal(range.headers.get('content-range'), `bytes 0-15/${bytes.length}`)
     assert.deepEqual(Buffer.from(await range.arrayBuffer()), bytes.subarray(0, 16))
-    assert.equal((await fetch(`${base}/_local/buildings.pmtiles`)).status, 416)
-    assert.equal((await fetch(`${base}/_local/buildings.pmtiles`, { headers: { Range: 'bytes=0-15', 'If-Match': 'invalid' } })).status, 412)
-    const head = await fetch(`${base}/_local/buildings.pmtiles`, { method: 'HEAD' })
+    assert.equal((await fetch(`${base}${LOCAL_PMTILES_PATH}`)).status, 416)
+    assert.equal((await fetch(`${base}${LOCAL_PMTILES_PATH}`, { headers: { Range: 'bytes=0-15', 'If-Match': 'invalid' } })).status, 412)
+    const head = await fetch(`${base}${LOCAL_PMTILES_PATH}`, { method: 'HEAD' })
     assert.equal(head.status, 200); assert.equal(Number(head.headers.get('content-length')), bytes.length)
+    assert.equal((await fetch(`${base}/_local/buildings.pmtiles`)).status, 403)
     assert.equal((await fetch(`${base}/data/processed/test.pmtiles`)).status, 403)
     assert.equal((await fetch(`${base}/data/raw/test.mbtiles`)).status, 403)
     assert.equal((await fetch(`${base}/data/raw/test%2Embtiles`)).status, 403)
-    assert.equal((await fetch(`${base}/_local/buildings.pmtiles`, { method: 'POST' })).status, 405)
-    assert.equal((await fetch(`${base}/_local/buildings.pmtiles/arbitrary`)).status, 404)
+    assert.equal((await fetch(`${base}${LOCAL_PMTILES_PATH}`, { method: 'POST' })).status, 405)
+    assert.equal((await fetch(`${base}${LOCAL_PMTILES_PATH}/arbitrary`)).status, 404)
   } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())) }
 })

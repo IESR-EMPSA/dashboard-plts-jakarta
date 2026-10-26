@@ -2,13 +2,17 @@
 // No browser dependency, production data mutation, or remote writes.
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { messages } from '../src/i18n/messages.ts'
+import { BUILDING_ARCHIVE } from '../src/map/buildingArchive.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const qaRelative = 'data/processed/qa/localization'
+const zoomOnly = process.argv.includes('--archive-zooms-only')
+const archiveUpdate = process.argv.includes('--archive-update') || zoomOnly
+const qaRelative = zoomOnly ? 'data/processed/qa/archive-z13-18/browser-native-zooms' : archiveUpdate ? 'data/processed/qa/archive-z13-18/browser' : 'data/processed/qa/chart-refinement'
+const archiveBytes = (await stat(resolve(root, BUILDING_ARCHIVE.localFile))).size
 const qa = resolve(root, qaRelative)
 await mkdir(qa, { recursive: true })
 const profile = resolve(qa, `chrome-profile-${process.pid}`)
@@ -99,6 +103,107 @@ async function screenshot(name, full = false) {
   await writeFile(resolve(qa, `${name}.png`), Buffer.from(result.data, 'base64'))
   screenshots.push(`${qaRelative}/${name}.png`)
 }
+async function screenshotCharts(name) {
+  const clip = await evaluate(`(()=>{const r=document.querySelector('#analisis').getBoundingClientRect();return {x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height,scale:1}})()`)
+  const result = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip })
+  await writeFile(resolve(qa, `${name}.png`), Buffer.from(result.data, 'base64'))
+  screenshots.push(`${qaRelative}/${name}.png`)
+}
+async function checkChartLayout(label) {
+  const result = await evaluate(`(()=>{const cards=[...document.querySelectorAll('.chart-card')].map(e=>{const r=e.getBoundingClientRect(),footer=e.querySelector('footer').getBoundingClientRect(),bodies=[...e.querySelectorAll(':scope>.chart-caveat,:scope>.energy-availability,:scope>.bar-chart,:scope>.donut-layout')];return {name:e.dataset.testid,height:r.height,footerGap:bodies.length?footer.top-Math.max(...bodies.map(b=>b.getBoundingClientRect().bottom)):0}});return {width:innerWidth,cards,overflow:document.documentElement.scrollWidth>innerWidth,typeLabelsFit:[...document.querySelectorAll('.type-bars .chart-label')].every(e=>e.scrollWidth<=e.clientWidth+1),typeRows:document.querySelectorAll('.type-bars .chart-row').length}})()`)
+  assert(!result.overflow, `${label}: charts must not cause horizontal overflow`)
+  assert(result.typeLabelsFit, `${label}: complete building type labels fit`)
+  assert.equal(result.typeRows, 7)
+  for (const card of result.cards) assert(card.footerGap<=24, `${label}: ${card.name} has unnecessary blank space before its footer`)
+  return result
+}
+async function checkSummaryCardLayout(label) {
+  const result = await evaluate(`(()=>{const cards=[...document.querySelectorAll('.kpi-card')].map(e=>{const r=e.getBoundingClientRect(),number=e.querySelector('.kpi-number'),heading=e.querySelector('.kpi-heading'),note=e.querySelector('p');return {key:e.dataset.testid,top:r.top,height:r.height,numberTop:number.getBoundingClientRect().top,headingTop:heading.getBoundingClientRect().top,noteTop:note.getBoundingClientRect().top,contentMetrics:[heading,number,note].map(n=>({className:n.className,width:n.clientWidth,scrollWidth:n.scrollWidth,height:n.clientHeight,scrollHeight:n.scrollHeight,box:n.getBoundingClientRect().height})),contentFits:[heading,number,note].every(n=>{const b=n.getBoundingClientRect();return n.scrollWidth<=n.clientWidth+1&&b.top>=r.top&&b.bottom<=r.bottom&&(getComputedStyle(n).overflowY==='visible'||n.scrollHeight<=n.clientHeight+1)})}});return {width:innerWidth,sharedRows:CSS.supports('grid-template-rows','subgrid'),cards,overflow:document.documentElement.scrollWidth>innerWidth}})()`)
+  assert(!result.overflow, `${label}: summary cards must not cause horizontal overflow`)
+  const rows = []
+  for (const card of result.cards) {
+    assert(card.contentFits, `${label}: ${card.key} content must remain visible: ${JSON.stringify(card.contentMetrics)}`)
+    let row = rows.find(r=>Math.abs(r[0].top-card.top)<1)
+    if (!row) rows.push(row=[])
+    row.push(card)
+  }
+  for (const row of rows) {
+    assert(Math.max(...row.map(c=>c.height))-Math.min(...row.map(c=>c.height))<=1, `${label}: summary cards in the same row have equal height`)
+    if (result.sharedRows) for (const key of ['headingTop','numberTop','noteTop']) {
+      assert(Math.max(...row.map(c=>c[key]))-Math.min(...row.map(c=>c[key]))<=1, `${label}: summary ${key} must align`)
+    }
+  }
+  for (const card of result.cards) delete card.contentMetrics
+  return result
+}
+async function checkNativeArchiveZooms() {
+  checks.nativeArchiveZooms = []
+  for (const zoom of [BUILDING_ARCHIVE.minZoom + 0.3, BUILDING_ARCHIVE.maxZoom]) {
+    const start = Date.now(), expectedTileZoom = Math.floor(zoom)
+    await evaluate(`void window.__SOLAR_MAP__.jumpTo({zoom:${zoom}})`)
+    // Inspect the installed MapLibre 6.15 tile-manager API in QA only. This rules
+    // out counting temporarily retained parent/child tiles as native-zoom success.
+    const renderable = `window.__SOLAR_MAP__.style.tileManagers['solar-buildings']`
+    await waitFor(`(()=>{const m=window.__SOLAR_MAP__,t=${renderable},ids=t.getRenderableIds();return m.isSourceLoaded('solar-buildings')&&ids.length>0&&ids.every(id=>t.getTileByID(id).tileID.canonical.z===${expectedTileZoom})})()`, `actual native tiles at zoom ${zoom}`, 120000)
+    const result = await evaluate(`(()=>{const m=window.__SOLAR_MAP__,t=${renderable};return {zoom:m.getZoom(),rendered:m.queryRenderedFeatures({layers:['solar-building-fill']}).length,minzoom:m.getSource('solar-buildings').minzoom,maxzoom:m.getSource('solar-buildings').maxzoom,canonicalZooms:[...new Set(t.getRenderableIds().map(id=>t.getTileByID(id).tileID.canonical.z))]}})()`)
+    assert(result.rendered>0); assert.equal(result.minzoom,BUILDING_ARCHIVE.minZoom); assert.equal(result.maxzoom,BUILDING_ARCHIVE.maxZoom)
+    result.waitMs = Date.now()-start; checks.nativeArchiveZooms.push(result)
+  }
+}
+
+async function checkRepairedBuildingInteractions() {
+  const source = JSON.parse(await readFile(resolve(root, 'data/processed/qa/archive-z13-18/repaired-source-check.json'), 'utf8'))
+  await choose('type-filter','')
+  await choose('region-filter','')
+  checks.repairedBuildings = []
+  const cases = [...source.targets.map(target=>({target,zoom:17.3})), {target:source.targets.find(t=>t.uid==='1097775'),zoom:18.3}]
+  for (const [caseIndex,{target,zoom}] of cases.entries()) {
+    // Isolate batches like separate browser test cases, releasing software-WebGL
+    // resources from prior dense-map/chart tests. This is not a soak benchmark.
+    if (caseIndex%15===0) {
+      const query = `?qa_archive_batch=${caseIndex}`
+      await command('Page.navigate',{url:`http://localhost:5173/${query}`})
+      await waitFor(`location.search===${JSON.stringify(query)} && !!window.__SOLAR_MAP__`, 'fresh repaired-building batch')
+      await setLanguage('id')
+    }
+    await evaluate(`void window.__SOLAR_MAP__.jumpTo({center:${JSON.stringify(target.center)},zoom:${zoom},padding:0,bearing:0,pitch:0})`)
+    await waitFor(`window.__SOLAR_MAP__.isSourceLoaded('solar-buildings') && window.__SOLAR_MAP__.queryRenderedFeatures({layers:['solar-building-fill'],filter:['==',['get','building_uid'],${JSON.stringify(target.uid)}]}).length>0`, `repaired building ${target.uid}`, 120000)
+    const hit = await evaluate(`(()=>{const m=window.__SOLAR_MAP__,r=m.getCanvas().getBoundingClientRect(),id=${JSON.stringify(target.uid)},features=m.queryRenderedFeatures({layers:['solar-building-fill'],filter:['==',['get','building_uid'],id]});for(const f of features){const coordinates=f.geometry.type==='Polygon'?f.geometry.coordinates.flat():f.geometry.coordinates.flat(2),points=coordinates.map(c=>m.project(c)),xs=points.map(p=>p.x),ys=points.map(p=>p.y),a=Math.min(...xs),b=Math.max(...xs),c=Math.min(...ys),d=Math.max(...ys);for(const fy of [.5,.3,.7,.1,.9])for(const fx of [.5,.3,.7,.1,.9]){const x=a+(b-a)*fx,y=c+(d-c)*fy;if(x<28||y<28||x>r.width-28||y>r.height-28)continue;const top=m.queryRenderedFeatures([x,y],{layers:['solar-building-fill']})[0];if(String(top?.properties.building_uid)===id)return {x:r.left+x,y:r.top+y,properties:top.properties}}}return null})()`)
+    assert(hit, `Unobstructed real mouse target for ${target.uid}`)
+    for (const [field, expected] of Object.entries(target.expected)) {
+      if (field === 'building_uid') continue
+      const actual = hit.properties[field]
+      if (expected == null) assert(actual == null)
+      else {
+        assert(Number.isFinite(actual), `${target.uid}/${field}: numeric type`)
+        assert(Math.abs(actual-expected)<=Math.max(1e-9,Math.abs(expected)*1e-12), `${target.uid}/${field}: source value`)
+        if (target.repaired_fields.includes(field)) assert.equal(actual,expected)
+      }
+    }
+    await command('Input.dispatchMouseEvent',{type:'mouseMoved',x:hit.x,y:hit.y})
+    await command('Input.dispatchMouseEvent',{type:'mousePressed',x:hit.x,y:hit.y,button:'left',clickCount:1})
+    await command('Input.dispatchMouseEvent',{type:'mouseReleased',x:hit.x,y:hit.y,button:'left',clickCount:1})
+    await waitFor(`document.querySelector('[data-testid="building-id"]')?.textContent===${JSON.stringify(target.uid)}`, `detail for repaired ${target.uid}`)
+    const details = {}
+    for (const language of ['id','en']) {
+      await setLanguage(language)
+      const display = await evaluate(`({id:document.querySelector('[data-testid="building-id"]').textContent,capacity:document.querySelector('.detail-capacity strong').textContent.trim(),metrics:[...document.querySelectorAll('.detail-metrics dd')].map(e=>e.textContent.replace(/\\s+/g,' ').trim())})`)
+      assert.equal(display.id,target.uid)
+      assert.equal(display.capacity,fmt(target.expected.capacity_kwp,2,language)+' kWp')
+      assert.equal(display.metrics[0],fmt(target.expected.area_m2,2,language)+' m²')
+      assert.equal(display.metrics[1],fmt(target.expected.useable_m2,2,language)+' m²')
+      details[language] = display
+    }
+    if (target.uid==='1097775' && zoom>18) await screenshot('repaired-1097775-english-z18')
+    await setLanguage('id')
+    await mouseClick('[aria-label="Tutup detail bangunan"]')
+    await waitFor(`!document.querySelector('[data-testid="building-details"]')`, 'close repaired detail')
+    checks.repairedBuildings.push({uid:target.uid,zoom,numericPropertiesMatchGeoPackage:true,realMouseClick:true,details})
+    if (checks.repairedBuildings.length%10===0) console.log(JSON.stringify({progress:'repaired-building-browser-checks',complete:checks.repairedBuildings.length,total:cases.length}))
+  }
+  assert.equal(new Set(checks.repairedBuildings.map(b=>b.uid)).size,45)
+}
+
 try {
   let port
   for (let i = 0; i < 120; i++) {
@@ -122,7 +227,7 @@ try {
     if (m.method === 'Network.requestWillBeSent') requests.set(m.params.requestId, m.params.request)
     if (m.method === 'Network.loadingFailed') failures.push({ url: requests.get(m.params.requestId)?.url, error: m.params.errorText })
     if (m.method === 'Network.responseReceived' && m.params.response.url.startsWith('https://mt0.google.com/vt/')) imageryResponses.push({url:m.params.response.url,status:m.params.response.status,mimeType:m.params.response.mimeType})
-    if (m.method === 'Network.responseReceived' && m.params.response.url.includes('/_local/buildings.pmtiles')) {
+    if (m.method === 'Network.responseReceived' && m.params.response.url.includes(BUILDING_ARCHIVE.localUrl)) {
       const r = m.params.response
       const requestHeaders = requests.get(m.params.requestId)?.headers ?? {}
       const header = (headers, name) => Object.entries(headers).find(([k]) => k.toLowerCase() === name)?.[1]
@@ -131,12 +236,14 @@ try {
   }
   command = (method, params = {}) => new Promise((resolve, reject) => {
     const messageId = ++id
-    const timeout = setTimeout(() => { pending.delete(messageId); reject(Error(`CDP command timed out: ${method}`)) }, 20000)
+    const timeout = setTimeout(() => { pending.delete(messageId); reject(Error(`CDP command timed out: ${method}`)) }, archiveUpdate ? 60000 : 20000)
     pending.set(messageId, { resolve: r => { clearTimeout(timeout); resolve(r) }, reject: e => { clearTimeout(timeout); reject(e) } })
     socket.send(JSON.stringify({ id: messageId, method, params }))
   })
   evaluate = async expression => {
-    const r = await command('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
+    let r
+    try { r = await command('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }) }
+    catch (error) { throw Error(`${error.message}; expression: ${expression.slice(0,500)}`, {cause:error}) }
     if (r.exceptionDetails) throw Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text)
     return r.result.value
   }
@@ -155,6 +262,7 @@ try {
   await screenshot('01-overview')
   console.log(JSON.stringify({ progress: 'initial', ...checks.initial }))
   checks.initialFullDkiExtent = await checkFullExtent('Initial extent')
+  checks.initialSummaryLayout = await checkSummaryCardLayout('Initial DKI summary cards')
   assert(await evaluate(`!document.querySelector('.model-badge')`), 'Modeled-data badge removed')
   await setLanguage('en')
   await checkEnglishText()
@@ -199,7 +307,13 @@ try {
   await evaluate(`document.querySelector('.analysis-sidebar').scrollTop=0`)
   checks.sidebarScrollIndependent = true
   // Full interaction suite follows below; this flag also supports a quick visual inspection.
-  if (!process.argv.includes('--smoke')) {
+  if (zoomOnly) { await navigateSample('urban'); await checkNativeArchiveZooms() }
+  if (!process.argv.includes('--smoke') && !zoomOnly) {
+    // Statistical selectors must work independently of tile visibility. Avoid loading
+    // every district's dense tiles while rapidly testing hundreds of KPI selections.
+    await evaluate(`(()=>{const c=document.querySelector('.layer-popover input');if(c.checked)c.click()})()`)
+    await waitFor(`window.__SOLAR_MAP__.getLayoutProperty('solar-building-fill','visibility')==='none'`, 'hide buildings for independent summary checks')
+    checks.summaryIndependentOfBuildingVisibility = true
     // Navigate all actual dropdown options, reconciling the UI with every summary row.
     let regionCount = 0, districtCount = 0
     assert.equal(await evaluate(`document.querySelector('[data-testid="region-filter"]').options.length`), 7)
@@ -261,7 +375,60 @@ try {
     await setLanguage('id')
     assert.equal(await evaluate(`document.querySelectorAll('.type-bars .chart-row').length`), 7)
     checks.chartScopes = await evaluate(`({region:document.querySelector('.region-chart footer').innerText,types:document.querySelector('.chart-scope-note').innerText,eligibility:document.querySelector('.eligibility-chart footer').innerText})`)
+    checks.compactChartLayouts = []
+    checks.summaryCardLayouts = []
+    const south = regions.regions.find(r=>r.wilayah==='Jakarta Selatan')
+    await choose('region-filter', south.id)
+    for (const width of [1920,1440,1024,768,390,320]) {
+      await command('Emulation.setDeviceMetricsOverride', { width, height: width<861?844:1080, deviceScaleFactor: 1, mobile: width<861 })
+      for (const locale of ['id','en']) {
+        await setLanguage(locale)
+        await pause(100)
+        await choose('region-filter', '')
+        assert.deepEqual(await kpiValues(), expectedKpis(regions.overall, locale))
+        checks.summaryCardLayouts.push({locale,scope:'DKI',...await checkSummaryCardLayout(`${locale} ${width}px DKI summary cards`)})
+        const dkiLayout = await checkChartLayout(`${locale} ${width}px six-region chart`)
+        await choose('region-filter', south.id)
+        assert.deepEqual(await kpiValues(), expectedKpis(south, locale))
+        checks.summaryCardLayouts.push({locale,scope:'Jakarta Selatan',...await checkSummaryCardLayout(`${locale} ${width}px regional summary cards`)})
+        const layout = await checkChartLayout(`${locale} ${width}px ten-district chart`)
+        assert(layout.cards[0].height>dkiLayout.cards[0].height+30, 'Comparison grows to fit ten districts')
+        assert(Math.abs(layout.cards[1].height-dkiLayout.cards[1].height)<=1, 'Type card keeps its own height when the comparison grows')
+        if (width>1190) assert(Math.abs(layout.cards[2].height-dkiLayout.cards[2].height)<=1, 'Eligibility card keeps its own height when the comparison grows')
+        if (width>1190) assert(Math.max(...layout.cards.map(c=>c.height))-Math.min(...layout.cards.map(c=>c.height))>20, 'Desktop cards follow their content height')
+        checks.compactChartLayouts.push({locale,...layout})
+        assert(await evaluate(`!!document.querySelector('.comparison-footer .chart-interaction-hint')&&!document.querySelector('.comparison-footer svg')`))
+        const text = await evaluate(`document.querySelector('.chart-caveat').textContent`)
+        assert(!/arsiran|hatching|PVOUT/.test(text), 'Energy note uses plain language')
+        if (locale==='en') await checkEnglishText()
+        if ([1920,390].includes(width)) await screenshotCharts(`22-charts-${width}-${locale}`)
+      }
+    }
+    await command('Emulation.setDeviceMetricsOverride', { width:720, height:450, deviceScaleFactor:2, mobile:false })
+    checks.zoomEquivalentLayouts = []
+    for (const locale of ['id','en']) {
+      await setLanguage(locale)
+      await pause(100)
+      checks.zoomEquivalentLayouts.push({locale,summary:await checkSummaryCardLayout(`${locale} 200% equivalent viewport`),charts:await checkChartLayout(`${locale} 200% equivalent viewport`)})
+    }
+    // The published all-null district must fit the compact summary layout too.
+    await command('Emulation.setDeviceMetricsOverride', { width:320, height:844, deviceScaleFactor:1, mobile:true })
+    const islands = regions.regions.find(r=>r.wilayah==='Kepulauan Seribu')
+    const noEnergy = districts.districts.find(d=>d.kecamatan==='Kepulauan Seribu Utara')
+    await choose('region-filter', islands.id)
+    await choose('district-filter', noEnergy.id)
+    for (const locale of ['id','en']) {
+      await setLanguage(locale)
+      assert.deepEqual(await kpiValues(), expectedKpis(noEnergy, locale))
+      checks.summaryCardLayouts.push({locale,scope:'Unavailable generation',...await checkSummaryCardLayout(`${locale} 320px unavailable generation`)})
+      await evaluate(`window.scrollTo(0,0)`)
+      await screenshot(`24-unavailable-summary-320-${locale}`)
+    }
+    await command('Emulation.setDeviceMetricsOverride', { width:1440, height:900, deviceScaleFactor:1, mobile:false })
+    await setLanguage('id')
+    await choose('region-filter', '')
     await evaluate(`document.querySelector('#workspace').scrollIntoView({block:'start'})`)
+    await evaluate(`(()=>{const c=document.querySelector('.layer-popover input');if(!c.checked)c.click()})()`)
     await navigateSample('urban')
     await waitFor(`window.__SOLAR_MAP__.getZoom()>16 && window.__SOLAR_MAP__.isSourceLoaded('solar-buildings') && window.__SOLAR_MAP__.queryRenderedFeatures({layers:['solar-building-fill']}).length>0`, 'dense urban polygons')
     checks.urban = await evaluate(`({zoom:window.__SOLAR_MAP__.getZoom(),rendered:window.__SOLAR_MAP__.queryRenderedFeatures({layers:['solar-building-fill']}).length,filters:['solar-building-fill','solar-building-outline'].map(id=>window.__SOLAR_MAP__.getFilter(id))})`)
@@ -302,10 +469,12 @@ try {
     await waitFor(`!document.querySelector('[data-testid="building-details"]')`, 'close building details')
     assert(await evaluate(`window.__SOLAR_MAP__.getFeatureState({source:'solar-buildings',sourceLayer:'buildings_eligible_pvout',id:${JSON.stringify(hit.id)}}).selected===false`))
     checks.buildingCloseButton = true
-    await evaluate(`void window.__SOLAR_MAP__.jumpTo({zoom:18.3})`)
-    await waitFor(`window.__SOLAR_MAP__.isSourceLoaded('solar-buildings') && window.__SOLAR_MAP__.queryRenderedFeatures({layers:['solar-building-fill']}).length>0`, 'overzoomed z16 building source')
+    await checkNativeArchiveZooms()
+    await evaluate(`void window.__SOLAR_MAP__.jumpTo({zoom:${BUILDING_ARCHIVE.maxZoom + 0.3}})`)
+    await waitFor(`window.__SOLAR_MAP__.isSourceLoaded('solar-buildings') && window.__SOLAR_MAP__.queryRenderedFeatures({layers:['solar-building-fill']}).length>0`, 'overzoomed updated building source')
     checks.overzoom = await evaluate(`({zoom:window.__SOLAR_MAP__.getZoom(),sourceMaxzoom:window.__SOLAR_MAP__.getSource('solar-buildings').maxzoom})`)
-    assert.equal(checks.overzoom.sourceMaxzoom,16)
+    assert.equal(checks.overzoom.sourceMaxzoom,BUILDING_ARCHIVE.maxZoom)
+    if (archiveUpdate) await checkRepairedBuildingInteractions()
     await navigateSample('islands')
     await waitFor(`window.__SOLAR_MAP__.isSourceLoaded('solar-buildings') && window.__SOLAR_MAP__.queryRenderedFeatures({layers:['solar-building-fill']}).length>0`, 'island polygons')
     await evaluate(`document.querySelector('[data-testid="inspect-center"]').click()`)
@@ -326,6 +495,14 @@ try {
     await evaluate(`document.querySelector('[data-testid="generation-chart-tab"]').click()`)
     assert((await evaluate(`document.querySelector('.region-chart').innerText`)).includes('Tidak tersedia'))
     checks.allNullDistrictGeneration = true
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.no-data-bar>i')).display`), 'none')
+    await checkChartLayout('Unavailable district energy')
+    await screenshotCharts('23-unavailable-energy-id')
+    await setLanguage('en')
+    assert((await evaluate(`document.querySelector('.no-data-bar').closest('.chart-row').innerText`)).includes('Unavailable'))
+    await checkChartLayout('English unavailable district energy')
+    await screenshotCharts('23-unavailable-energy-en')
+    await setLanguage('id')
     await choose('region-filter', '')
     await evaluate(`document.querySelector('#map-metric').value='annual_gwh';document.querySelector('#map-metric').dispatchEvent(new Event('change',{bubbles:true}))`)
     await pause(200)
@@ -383,6 +560,7 @@ try {
     await screenshot('09-fullscreen-map')
     await mouseClick('.maplibregl-ctrl-shrink')
     await waitFor(`!document.fullscreenElement`, 'exit fullscreen')
+    await waitFor(`!!document.querySelector('.maplibregl-ctrl-fullscreen')`, 'fullscreen control finishes its exit transition')
     assert.equal(await evaluate(`document.querySelector('.maplibregl-ctrl-fullscreen').getAttribute('aria-label')`), 'View map in fullscreen')
     await setLanguage('id')
     checks.languageFullscreen = true
@@ -461,7 +639,7 @@ try {
     checks.dataErrorAndRetry = true
   }
   checks.noCriticalErrors = exceptions.length === 0 && consoleErrors.length === 0
-  checks.rangeOnly = ranges.every(r => r.status === 206 && r.range && r.bytes < 16 * 1024 * 1024)
+  checks.rangeOnly = ranges.length > 0 && ranges.every(r => r.status === 206 && r.range && r.bytes <= 16 * 1024 * 1024 && r.contentRange?.endsWith(`/${archiveBytes}`))
   const report = { scope: 'Actual Vue application at http://localhost:5173; local Range PMTiles via official browser protocol', browserVersion, checks, ranges, imageryResponses, exceptions, consoleErrors, failures, screenshots,
     limitations: ['Headless Chrome / software WebGL, not a physical mobile or GPU performance certification', 'Range bytes reflect representative views and canceled navigation requests, not a production bandwidth budget', 'Blocked external basemap and navigation cancellations are intentional network failures'] }
   await writeFile(resolve(qa, 'app-report.json'), JSON.stringify(report, null, 2) + '\n')

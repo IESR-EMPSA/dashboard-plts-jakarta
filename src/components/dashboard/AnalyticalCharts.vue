@@ -34,13 +34,13 @@ const valueLabel = (value: number | null) => value === null ? t('common.unavaila
       <article class="chart-card region-chart" data-testid="regional-chart">
         <header><div><h3>{{ t('chart.regionTitle') }}</h3><p>{{ filters.regionId ? t('chart.districtComparison') : t('chart.regionComparison') }}</p></div><span class="chart-unit">{{ comparisonMetric === 'capacity_mwp' ? 'GWp' : t('unit.twhYear') }}</span></header>
         <div class="segmented chart-tabs" :aria-label="t('chart.metric')"><button :aria-pressed="comparisonMetric === 'capacity_mwp'" @click="comparisonMetric = 'capacity_mwp'">{{ t('chart.capacity') }}</button><button :aria-pressed="comparisonMetric === 'annual_gwh'" data-testid="generation-chart-tab" @click="comparisonMetric = 'annual_gwh'">{{ t('chart.energy') }}</button></div>
-        <div class="bar-chart" :class="{ 'many-rows': sortedRows.length > 8 }">
+        <div class="bar-chart" :class="{ 'many-rows': sortedRows.length > 8, 'has-unavailable': sortedRows.some(row => row[comparisonMetric] === null) }">
           <button v-for="row in sortedRows" :key="row.id" class="chart-row" :class="{ 'selected-row': row.id === filters.districtId }" :title="t('chart.click', { name: rowLabel(row), value: valueLabel(row[comparisonMetric]), unit: comparisonMetric === 'capacity_mwp' ? 'GWp' : t('unit.twhYear') })" @click="chooseRow(row.id)">
             <span class="chart-label">{{ rowLabel(row) }}</span><span class="bar-track" :class="{ 'no-data-bar': row[comparisonMetric] === null }" aria-hidden="true"><i :style="{ width: row[comparisonMetric] === null ? '100%' : `${row[comparisonMetric]! / max * 100}%` }" /></span><strong>{{ valueLabel(row[comparisonMetric]) }}</strong>
           </button>
         </div>
         <p v-if="comparisonMetric === 'annual_gwh'" class="chart-caveat">{{ t('chart.energyNote') }}</p>
-        <footer><span class="tiny-dot" />{{ t('common.scope', { scope: comparisonScope }) }}<small>{{ t('chart.explore') }} <AppIcon name="arrow" :size="13" /></small></footer>
+        <footer class="comparison-footer"><span class="chart-footer-scope"><span class="tiny-dot" />{{ t('common.scope', { scope: comparisonScope }) }}</span><span class="chart-interaction-hint">{{ t(filters.regionId ? 'chart.selectDistrict' : 'chart.selectRegion') }}</span></footer>
       </article>
 
       <article class="chart-card type-chart" data-testid="type-chart">

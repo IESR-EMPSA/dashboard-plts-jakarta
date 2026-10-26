@@ -41,7 +41,18 @@ Desktop prioritizes the map with a 230 px sidebar (244 px on wide screens and 21
 
 Regional comparison toggles GWp/TWh and follows the selected parent region; its scope is explicit. The seven-category capacity chart stays DKI-wide in MWp. Eligibility and PVOUT count coverage follow supported KPI scope; unsupported intersections show an explanation. No chart substitutes zero for NULL energy.
 
+Analytical cards use their content height and align at the top. Chart lists stay close to their headings; they do not stretch or center vertically to match a longer district comparison. Building-type rows place the full category name and MWp value above a slim bar, including longer English labels. The chart-click instruction stays in the comparison footer without an arrow. Annual-energy notes use plain language about available solar energy data; unavailable rows have an empty neutral track and an explicit translated unavailable value rather than a hatched full-length bar. On tablets the eligibility summary uses a compact horizontal layout, and mobile cards stack naturally.
+
 Vintage, rights, full source-model verification and production device/network performance remain release gates. See LOCAL_DEMO.md.
+
+## Card sizing policy
+
+- Summary metric cards share their height within each row. Headings, values, and notes use shared CSS grid rows where subgrid is supported, with a flex layout fallback. Height can grow for translated labels; numbers and units may wrap on narrow screens, including unavailable generation.
+- Desktop analytical cards use three equal-width columns, consistent padding and top alignment. Each card keeps its own content height. A longer district comparison must not stretch the type or eligibility card.
+- On smaller screens the existing two-column tablet layout and single-column phone charts remain. Summary cards use two columns on mobile. No fixed maximum height or internal chart scroll is introduced.
+- Verify DKI-wide, ten-district, and unavailable-energy scopes in both languages at 320–1920 px. A 720×450 CSS viewport at DPR 2 approximates the viewport and pixel density of a 1440×900 window at 200% zoom; it is not a full browser-zoom or accessibility conformance audit.
+
+The choice follows the content-dependent sizing options in [Microsoft Fluent cards](https://fluent2.microsoft.design/components/web/react/core/card/usage), the mobile spacing and scrolling guidance in [Microsoft Power BI](https://learn.microsoft.com/en-us/power-bi/create-reports/power-bi-create-mobile-optimized-report-best-practices), and the requirement to preserve information when text grows in [W3C Resize Text](https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html).
 
 ## Interface language
 

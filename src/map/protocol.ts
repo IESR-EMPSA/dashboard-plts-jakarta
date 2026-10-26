@@ -1,6 +1,7 @@
 import { addProtocol, setWorkerUrl } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { Protocol } from 'pmtiles'
+import { BUILDING_ARCHIVE } from './buildingArchive.ts'
 
 let protocol: Protocol | undefined
 export function prepareMapRuntime(): void {
@@ -11,5 +12,5 @@ export function prepareMapRuntime(): void {
 export function buildingArchiveUrl(): string | null {
   const configured = import.meta.env.VITE_BUILDINGS_PMTILES_URL as string | undefined
   if (configured) return configured
-  return import.meta.env.DEV ? new URL('/_local/buildings.pmtiles', window.location.origin).href : null
+  return import.meta.env.DEV ? new URL(BUILDING_ARCHIVE.localUrl, window.location.origin).href : null
 }

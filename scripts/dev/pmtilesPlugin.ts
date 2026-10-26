@@ -3,8 +3,9 @@ import { stat } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
+import { BUILDING_ARCHIVE } from '../../src/map/buildingArchive.ts'
 
-export const LOCAL_PMTILES_PATH = '/_local/buildings.pmtiles'
+export const LOCAL_PMTILES_PATH = BUILDING_ARCHIVE.localUrl
 export const MAX_RANGE_BYTES = 16 * 1024 * 1024
 
 export function parseByteRange(header: string | undefined, size: number): { start: number; end: number } | null {
@@ -57,6 +58,6 @@ export function archiveMiddleware(archivePath: string) {
 
 /** Development only; never exposes a production API or copies an archive into the build. */
 export function localPmtilesPlugin(): Plugin {
-  const archive = fileURLToPath(new URL('../../data/processed/buildings_eligible_dki.pmtiles', import.meta.url))
+  const archive = fileURLToPath(new URL(`../../${BUILDING_ARCHIVE.localFile}`, import.meta.url))
   return { name: 'local-research-pmtiles', apply: 'serve', configureServer(server) { server.middlewares.use(archiveMiddleware(archive)) } }
 }

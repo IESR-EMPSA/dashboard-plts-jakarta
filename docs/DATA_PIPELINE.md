@@ -1,5 +1,7 @@
 # Reproducible publication data
 
+Current building delivery is a separate GeoPackage-verified z13–18 derivative; see [ARCHIVE_REPAIR_REPORT.md](ARCHIVE_REPAIR_REPORT.md). The original statistical preprocessing inputs, producer and all nine publication outputs below are unchanged. Delivery-only repair fingerprints and per-field provenance are recorded separately; they do not replace the original publication manifest.
+
 ## Commands and environment
 Use the existing Node 24.19.0 runtime and pnpm installation. Scripts use Node's native TypeScript support and built-in test/crypto/filesystem APIs; no preprocessing dependency was installed. This is offline preparation, not an application backend.
 

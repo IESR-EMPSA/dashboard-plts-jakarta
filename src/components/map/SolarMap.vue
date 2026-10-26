@@ -10,9 +10,10 @@ import { copyBoundaryGeoJson } from '../../services/boundaryGeoJson.ts'
 import { adaptBuildingProperties } from '../../services/normalization.ts'
 import type { NormalizedBuildingProperties } from '../../types/dashboard.ts'
 import type { MessageKey } from '../../i18n/messages.ts'
-import { BUILDING_MIN_ZOOM, BUILDING_SOURCE_LAYER, buildingFilter, collectionBounds, featureCenter, geometryBounds } from '../../map/mapModel.ts'
+import { BUILDING_MIN_ZOOM, BUILDING_MAX_ZOOM, BUILDING_SOURCE_LAYER, buildingFilter, collectionBounds, featureCenter, geometryBounds } from '../../map/mapModel.ts'
 import type { MapMetric } from '../../map/mapModel.ts'
 import { buildingArchiveUrl, prepareMapRuntime } from '../../map/protocol.ts'
+import { viewportHasFeatures } from '../../map/renderedFeatures.ts'
 import { GOOGLE_IMAGERY_LAYER, GOOGLE_IMAGERY_SOURCE, googleImagerySource, loadBasemap, neutralStyle } from '../../map/basemap.ts'
 import type { BasemapId } from '../../map/basemap.ts'
 import AppIcon from '../AppIcon.vue'
@@ -44,6 +45,7 @@ const tooltipText = computed(() => {
 })
 let map: MapLibreMap | undefined, disposed = false, hoveredId: string | number | null = null
 let viewingFullExtent = true
+let emptyViewNeedsCheck = true
 let baseLayers: string[] = [], baseSources = new Set<string>()
 const markers: { marker: Marker; name: string }[] = []
 const metricLabels: Record<MapMetric, MessageKey> = { capacity_mwp: 'chart.capacity', annual_gwh: 'chart.energy', eligibility_rate: 'kpi.eligibility' }
@@ -115,6 +117,7 @@ function selectProperties(properties: unknown) {
 }
 function updateAppearance() {
   if (!map || !ready.value || !data.value) return
+  emptyViewNeedsCheck = true
   const filter = buildingFilter(data.value, filters)
   for (const id of ['solar-building-fill', 'solar-building-outline']) {
     if (map.getLayer(id)) { map.setFilter(id, filter); map.setLayoutProperty(id, 'visibility', buildingsVisible.value ? 'visible' : 'none') }
@@ -178,6 +181,9 @@ async function initialize() {
       { id: GOOGLE_IMAGERY_LAYER, type: 'raster', source: GOOGLE_IMAGERY_SOURCE, layout: { visibility: 'none' } }] }
   map = new MapLibreMap({ container: container.value, style, bounds: fullExtent()!, fitBoundsOptions: { padding: extentPadding() },
     minZoom: 5, maxZoom: 20, renderWorldCopies: false,
+    // Dense z13 geometry is expensive to retain after navigation. Bound the
+    // viewport-sized cache without changing source zooms, geometry or filters.
+    maxTileCacheZoomLevels: 2,
     locale: { 'FullscreenControl.Enter': t('map.fullscreenEnter'), 'FullscreenControl.Exit': t('map.fullscreenExit'),
       'NavigationControl.ZoomIn': t('map.zoomIn'), 'NavigationControl.ZoomOut': t('map.zoomOut'),
       'AttributionControl.ToggleAttribution': t('map.toggleAttribution'), 'Map.Title': t('map.canvas') },
@@ -198,13 +204,24 @@ async function initialize() {
   })
   map.on('zoom', () => { zoom.value = map!.getZoom(); for (const { marker } of markers) marker.getElement().style.display = zoom.value < 13 ? '' : 'none' })
   map.on('movestart', event => { if (event.originalEvent) viewingFullExtent = false })
+  map.on('moveend', () => { emptyViewNeedsCheck = true })
   map.on('mousemove', handleMove); map.on('click', handleClick); map.on('mouseout', clearHover)
   map.on('idle', () => {
+    // Hover/selection repainting doesn't change whether any building is visible.
+    if (!emptyViewNeedsCheck) return
+    emptyViewNeedsCheck = false
+    const canvas = map!.getCanvas()
     emptyView.value = Boolean(ready.value && buildingsVisible.value && zoom.value >= BUILDING_MIN_ZOOM && map?.getLayer('solar-building-fill')
-      && map.queryRenderedFeatures({ layers: ['solar-building-fill'] }).length === 0)
+      && !viewportHasFeatures(canvas.clientWidth, canvas.clientHeight,
+        box => map!.queryRenderedFeatures(box, { layers: ['solar-building-fill'] })))
   })
   map.on('dataloading', event => { if ('sourceId' in event && event.sourceId === 'solar-buildings') busy.value = true })
-  map.on('sourcedata', event => { if (event.sourceId === 'solar-buildings' && event.isSourceLoaded) busy.value = false })
+  map.on('sourcedata', event => {
+    if (event.sourceId === 'solar-buildings') {
+      if (event.sourceDataType === 'content') emptyViewNeedsCheck = true
+      if (event.isSourceLoaded) busy.value = false
+    }
+  })
   map.once('load', () => {
     if (!map || disposed || !data.value) return
     const regions = copyBoundaryGeoJson(boundaries.region.data.value!), districts = copyBoundaryGeoJson(boundaries.district.data.value!)
@@ -221,7 +238,7 @@ async function initialize() {
     }
     const archive = buildingArchiveUrl()
     if (archive) {
-      map.addSource('solar-buildings', { type: 'vector', url: `pmtiles://${archive}`, minzoom: 14, maxzoom: 16, promoteId: 'building_uid',
+      map.addSource('solar-buildings', { type: 'vector', url: `pmtiles://${archive}`, minzoom: BUILDING_MIN_ZOOM, maxzoom: BUILDING_MAX_ZOOM, promoteId: 'building_uid',
         attribution: t('map.attribution') })
       const filter = buildingFilter(data.value, filters)
       map.addLayer({ id: 'solar-building-fill', type: 'fill', source: 'solar-buildings', 'source-layer': BUILDING_SOURCE_LAYER, minzoom: BUILDING_MIN_ZOOM, filter,
@@ -259,7 +276,7 @@ declare global { interface Window { __SOLAR_MAP__?: MapLibreMap } }
   <section ref="panel" class="map-panel" :aria-label="t('map.label')" :class="{ 'imagery-basemap': basemap === 'google-imagery' && !imageryUnavailable }">
     <header class="map-panel-header"><div class="map-title"><AppIcon name="globe" :size="18" /><strong>{{ t('map.title') }}</strong><span class="map-scope">{{ scope }}</span></div>
       <div class="map-toolbar"><details class="layer-menu"><summary class="button button-quiet"><AppIcon name="layers" :size="16" /> {{ t('map.layers') }}</summary><div class="layer-popover">
-        <strong>{{ t('map.display') }}</strong><label><input v-model="buildingsVisible" type="checkbox"> {{ t('kpi.eligible') }} <small>zoom 14+</small></label><label><input v-model="choroplethVisible" type="checkbox"> {{ t('map.choropleth') }}</label><label><input v-model="boundariesVisible" type="checkbox"> {{ t('map.boundaries') }}</label><label><input v-model="districtLinesVisible" type="checkbox"> {{ t('map.districts') }}</label>
+        <strong>{{ t('map.display') }}</strong><label><input v-model="buildingsVisible" type="checkbox"> {{ t('kpi.eligible') }} <small>zoom {{ BUILDING_MIN_ZOOM }}+</small></label><label><input v-model="choroplethVisible" type="checkbox"> {{ t('map.choropleth') }}</label><label><input v-model="boundariesVisible" type="checkbox"> {{ t('map.boundaries') }}</label><label><input v-model="districtLinesVisible" type="checkbox"> {{ t('map.districts') }}</label>
         <div class="filter-divider" /><span class="field-label">{{ t('map.basemap') }}</span><div class="segmented basemap-options" role="group" :aria-label="t('map.chooseBasemap')"><button :aria-pressed="basemap === 'openfreemap'" data-testid="basemap-openfreemap" @click="basemap = 'openfreemap'">OpenFreeMap</button><button :aria-pressed="basemap === 'google-imagery'" data-testid="basemap-google" @click="basemap = 'google-imagery'">{{ t('map.google') }}</button></div>
       </div></details><button class="icon-button" data-testid="map-extent" :title="t('map.extent')" :aria-label="t('map.extent')" @click="resetView"><AppIcon name="extent" :size="18" /></button></div>
     </header>
@@ -271,10 +288,10 @@ declare global { interface Window { __SOLAR_MAP__?: MapLibreMap } }
       <div v-if="!ready && busy" class="map-loading"><span class="spinner" /><strong>{{ t('map.preparing') }}</strong><span>{{ t('map.loading') }}</span></div>
       <div v-if="tooltip && tooltipText" class="map-tooltip" :style="{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }" aria-hidden="true"><strong>{{ tooltipText.title }}</strong><span>{{ tooltipText.detail }}</span></div>
       <div class="map-legend">
-        <template v-if="zoom < 14 || !buildingsVisible"><label for="map-metric">{{ t('map.areaColors') }}</label><select id="map-metric" v-model="metric" :aria-label="t('map.metric')"><option v-for="(label, key) in metricLabels" :key="key" :value="key">{{ t(label) }}</option></select><div class="choropleth-ramp" /><div class="legend-ticks"><span>0</span><span>{{ legendNumber(metricMax) }} {{ metricUnit }}</span></div><p><i class="legend-dot missing" /> {{ t('map.energyUnavailable') }}</p></template>
+        <template v-if="zoom < BUILDING_MIN_ZOOM || !buildingsVisible"><label for="map-metric">{{ t('map.areaColors') }}</label><select id="map-metric" v-model="metric" :aria-label="t('map.metric')"><option v-for="(label, key) in metricLabels" :key="key" :value="key">{{ t(label) }}</option></select><div class="choropleth-ramp" /><div class="legend-ticks"><span>0</span><span>{{ legendNumber(metricMax) }} {{ metricUnit }}</span></div><p><i class="legend-dot missing" /> {{ t('map.energyUnavailable') }}</p></template>
         <template v-else><label>{{ t('map.buildingPotential') }}</label><div class="building-ramp" /><div class="legend-ticks"><span>0</span><span>25</span><span>≥ 500</span></div><p><i class="legend-dot amber" /> {{ t('common.pvoutMissing') }}</p></template>
       </div>
-      <div class="map-instructions"><span class="status-dot" :class="{ pending: busy }" /><span>{{ zoom < 14 ? t('map.zoomHint') : t('map.clickHint') }}</span><button v-if="zoom >= 14 && buildingsVisible" :title="t('map.inspectTitle')" :aria-label="t('map.inspectLabel')" data-testid="inspect-center" @click="inspectCenter"><AppIcon name="cursor" :size="15" /> {{ t('map.inspect') }}</button><small>z{{ n(zoom, 1) }}</small></div>
+      <div class="map-instructions"><span class="status-dot" :class="{ pending: busy }" /><span>{{ zoom < BUILDING_MIN_ZOOM ? t('map.zoomHint') : t('map.clickHint') }}</span><button v-if="zoom >= BUILDING_MIN_ZOOM && buildingsVisible" :title="t('map.inspectTitle')" :aria-label="t('map.inspectLabel')" data-testid="inspect-center" @click="inspectCenter"><AppIcon name="cursor" :size="15" /> {{ t('map.inspect') }}</button><small>z{{ n(zoom, 1) }}</small></div>
       <slot />
     </div>
   </section>

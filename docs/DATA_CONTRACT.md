@@ -21,7 +21,10 @@ The 4,124 missing-PVOUT buildings are in Kepulauan Seribu in the current data. T
 | Input (QGIS export) | Geometry / rows | Purpose | Generated output |
 |---|---|---|---|
 | `data/raw/buildings_eligible_pvout.mbtiles` | 793,317,376 bytes; gzip MVT; 2,659 tiles, z14–16 | Existing building delivery source | Ignored `data/processed/buildings_eligible_dki.pmtiles`, outside public/Git |
-| Original eligible/all-building GeoPackages | Not present in repository | Original geometry/model/denominator QA | Do not expose raw files |
+| `data/raw/buildings_eligible_pvout.gpkg` | 899,366,912 bytes; 1,470,399 unique eligible IDs; Polygon Z declaration, EPSG:32748 | Authoritative per-building attributes for approved delivery repair; all affected fields verified exactly | Immutable/private; see ARCHIVE_REPAIR_REPORT.md |
+| Original all-building GeoPackage | Not present in repository | Original denominator/model QA | Do not expose raw files |
+| `data/processed/buildings_eligible_pvout_z13_z18.mbtiles` | Supplied z13–18 archive; 37,710 tiles | Original replacement, with documented source MVT attribute defects | Preserved unchanged with its initial PMTiles conversion |
+| `data/processed/buildings_eligible_pvout_z13_z18_repaired.mbtiles` | Separate attribute-only derivative, same geometry/IDs/zooms | GeoPackage-verified delivery; 76 reported issues restored | Active ignored `data/processed/buildings_eligible_dki_z13-18_repaired.pmtiles` |
 | `data/raw/admin_kabkot_dki.geojson` | 6 MultiPolygons; 4,780,245 bytes | Kab/kota map + labels | `public/data/admin_kabkot.geojson` |
 | `data/raw/admin_kecamatan_dki.geojson` | 44 MultiPolygons; 7,139,786 bytes | District boundaries | `public/data/admin_kecamatan.geojson` |
 | `summary_eligibility_dki` | 6 records | Counts, eligible rate | `summary_wilayah.json` (merged) |

@@ -47,14 +47,14 @@ Deliver an interactive research WebGIS for exploring **modeled rooftop photovolt
 - Selecting a kab/kota excludes districts outside the selection, and district choice resets if user changes parent.
 
 ### Building map
-- The requested next building-tile zoom range is **13–18**. This is the target for the next archive/viewer update; the existing z14–16 archive and QA remain the verified baseline until that update is validated.
+- The current building-tile zoom range is **13–18**, using a separate GeoPackage-verified repaired archive. The original z14–16 archive and QA remain preserved baseline/rollback evidence; see ARCHIVE_REPAIR_REPORT.md.
 - Never request all building polygons as one GeoJSON.
 - MapLibre will load PMTiles MVT via HTTP Range requests. R2 is the preferred storage candidate, pending confirmation; no remote endpoint is verified. Local archive preparation precedes application integration.
 - At low zoom display admin choropleth. Enable individual footprints at a tested higher zoom; exact thresholds based on performance testing.
 - Buildings are eligible; do not display a misleading 'not eligible' layer in V1.
 - Style available vs missing PVOUT distinctly if appropriate. Missing PVOUT buildings still show available modeled capacity.
 - Use `building_uid` as feature identifier if preserved in tile attributes; verify `source-layer` and stable IDs after conversion.
-- Existing MBTiles layer: `buildings_eligible_pvout`, z14–16. Normalize raw `useable_m2`, category aliases and omitted NoData energy using the data contract. Known type-0 instances need renderer QA; conversion is not repair.
+- Current source layer: `buildings_eligible_pvout`, z13–18. Normalize raw `useable_m2`, category aliases and omitted NoData energy using the data contract. Known type-0 instances retain the Polygon predicate. The approved attribute-only repair does not modify geometry; conversion itself is not repair.
 
 ### Visual and quality states
 - Loading skeletons, offline errors, missing JSON errors, empty selection and no PVOUT states.

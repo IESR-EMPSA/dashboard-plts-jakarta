@@ -2,9 +2,11 @@ import type { Feature, MultiPolygon, Position } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
 import type { DashboardFilters, ReadonlyDashboardData } from '../types/dashboard.ts'
 import { selectBuildingTypeLabels } from '../selectors/dashboard.ts'
+import { BUILDING_ARCHIVE } from './buildingArchive.ts'
 
-export const BUILDING_SOURCE_LAYER = 'buildings_eligible_pvout'
-export const BUILDING_MIN_ZOOM = 14
+export const BUILDING_SOURCE_LAYER = BUILDING_ARCHIVE.sourceLayer
+export const BUILDING_MIN_ZOOM = BUILDING_ARCHIVE.minZoom
+export const BUILDING_MAX_ZOOM = BUILDING_ARCHIVE.maxZoom
 export const POLYGON_FILTER: ExpressionSpecification = ['==', ['geometry-type'], 'Polygon']
 export type MapMetric = 'capacity_mwp' | 'annual_gwh' | 'eligibility_rate'
 export function buildingFilter(data: ReadonlyDashboardData, filters: Readonly<DashboardFilters>): FilterSpecification {

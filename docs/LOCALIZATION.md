@@ -14,13 +14,15 @@ The dashboard supports Indonesian (`id`) and English (`en`). The **ID / EN** swi
 
 Changing language retains the selected region, district, category, building, camera, source instances, layer visibility, and metric. It does not fetch translated copies of the statistical datasets or calculate statistics from map features. Unsupported administrative area × building type statistics remain unsupported.
 
+Card sizing preserves readable content in both languages: summary cards align headings, values, and notes per row and may grow when text wraps; analytical cards have equal desktop column widths and independent content heights. QA covers 26 DKI/regional/unavailable-generation summary layouts at 320–1920 px, plus a 720×450 viewport at DPR 2 approximating 200% zoom from 1440×900. This viewport simulation is not a complete browser-zoom or accessibility audit.
+
 ## Maintenance and verification
 
 Use `useI18n()` for every new user-facing string and numeric display. Add both translations to the catalog, use parameters for variable content, and keep data values separate from display labels. Technical validation diagnostics stay in the service errors and developer console; the interface shows translated recovery guidance.
 
 `pnpm test` includes seven localization tests covering catalog completeness/parameter parity, reactive changes, formatting/null semantics, all published administrative/category labels, preference persistence, blocked storage, and error messages. All 48 pre-existing tests are retained.
 
-`node scripts/qa-app.mjs` exercises the actual local application in Chrome, including every 6-region/44-district/7-category selection in both languages, existing tooltips/details, null generation, unsupported filters, native fullscreen, mobile layout, stored preferences, and intentional loading failures. Reports and screenshots go to ignored `data/processed/qa/localization/`. The full run requires the local development server, validated PMTiles, and Chrome. Headless software WebGL does not substitute for physical-device testing.
+`node scripts/qa-app.mjs` exercises the actual local application in Chrome, including every 6-region/44-district/7-category selection in both languages, existing tooltips/details, null generation, unsupported filters, native fullscreen, mobile layout, stored preferences, and intentional loading failures. Reports and screenshots now go to ignored `data/processed/qa/chart-refinement/`; earlier localization evidence remains in `data/processed/qa/localization/`. Chart checks additionally cover ten district rows at six desktop/tablet/mobile widths, complete translated category labels, compact card spacing, and explicit unavailable energy without hatching. The full run requires the local development server, validated PMTiles, and Chrome. Headless software WebGL does not substitute for physical-device testing.
 
 Run `pnpm typecheck`, `pnpm build`, and `pnpm data:check` as well. The data check verifies that all nine generated publication files still match the validated release. No archive conversion, data regeneration, storage upload, deployment, or dependency change is part of this feature.
 

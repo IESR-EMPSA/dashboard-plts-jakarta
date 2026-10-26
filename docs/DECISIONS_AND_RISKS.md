@@ -8,7 +8,8 @@
 5. Tiles are delivery/visualization medium; aggregates come from QGIS summary tables.
 6. Site-level `pvout_1` can be null. `annual_gwh` also null where no yield, but eligible capacity remains available.
 7. V1 uses 6 kab/kota, 44 kecamatan, 7 building types.
-8. The requested next building-tile zoom range is **13–18**. Archive preparation, viewer alignment, and validation for that range remain pending; prior z14–16 QA records are preserved.
+8. The active building-tile zoom range is **13–18**, using a separate GeoPackage-verified attribute-only repair. The original sources, initial converted file, prior z14–16 archives and QA records are preserved. See ARCHIVE_REPAIR_REPORT.md for the exact 76-issue ledger and rollback.
+9. Manual functional UAT is approved. Subsequent work is technical QA and confirmed-issue fixes only. Bounded visual existence checks and two-level decoded cache retention preserve the approved UI/data behavior. Continuous local runs and 62 automated tests pass, but remote hosting and target-device memory/bandwidth sign-off remain required; see TECHNICAL_QA_REPORT.md.
 
 ## Local demo decisions (approved milestone 3)
 
@@ -27,9 +28,10 @@
 ## Confirmations needed before calling release production-ready
 | Item | Current state | Consequence |
 |---|---|---|
-| PMTiles generated | Complete: 790,567,834 bytes; v3 MVT; official CLI 1.31.2 show/verify pass; 28 sampled tiles byte-identical | Local application protocol/Range now verified; remote hosting pending |
+| PMTiles generated | Current separate repaired z13–18 archive: 1,667,964,549 bytes; official CLI verify passes; 33 samples include all repaired tiles | Original archives preserved; remote hosting pending; see ARCHIVE_REPAIR_REPORT.md |
 | Source-layer name | buildings_eligible_pvout in both archives | Actual layer used in both application building layers |
-| Source size/zoom | 793,317,376 bytes; 2,659 gzip MVT tiles, z14–16 | PMTiles 790,567,834 bytes; representative local browser QA complete, production budgets pending |
+| Source size/zoom | Supplied z13–18 MBTiles: 1,697,189,888 bytes; 37,710 tiles; source attribute defects verified against the original GeoPackage | Separate repaired derivative changes only 78 field instances in three tiles; geometry/identity/zoom preservation checked; production budgets pending |
+| Source attribute verification | GeoPackage now present; all 76 reported issues verified by building_uid, including fields outside detail panels | Zero unresolved attribute mismatches in the repaired derivative; exact exporter implementation remains unknown |
 | Remote CORS and Range 206 | No remote endpoint verified/uploaded | Separate hosting gate |
 | Normalized JSON/frontend services | Original nine files retained; manifest/runtime-validated services and filter semantics implemented; 41 tests pass | Local map/dashboard now implemented; production release gates remain |
 | Administrative polygons | 6 regions + 44 districts present; joins resolve explicitly | Full topology/assignment/source rights pending |
@@ -42,12 +44,15 @@
 ## Release notes / risks
 - Data coverage caveat: approximately 40.15 MWp in Kepulauan Seribu has no PVOUT in currently aggregated dataset; annual generation excludes that part.
 - Precision caveat: model uses footprint-based assumptions and specific yield, not individual roof shading, pitch, orientation, structural capacity or connection constraints.
-- R2 custom-domain/Range/CORS/cost/latency and cacheable-object limits require review before public launch. Largest current z14 compressed tile is 3,970,317 bytes; conversion alone is not a speed guarantee.
+- R2 custom-domain/Range/CORS/cost/latency and cacheable-object limits require review before public launch. The largest compressed tile is now 11,485,765 bytes at z13; the unchanged z14 maximum is 3,970,317 bytes. Conversion alone is not a speed guarantee. Dense-view sustained-session and physical-device performance remain release gates.
 - Source schema differs from desired details (useable_m2; omitted energy; mixed fid; uppercase categories). Use explicit adapters. Administrative WIADKK is unsuitable for joining Seribu, and metadata suggests mixed vintages.
 - Vector tiling can clip or simplify geometry; no inference of all-building counts from tiles.
-- Dataset versions must be pinned together. A new PMTiles alone without recomputing JSON creates inconsistent dashboard results.
+- The original-cache AMD stress run became unresponsive after 140 stops. A reduced-cache run completes 150 stops over 5.4 minutes, but the earlier timeout's exact cause is not conclusively established. Final stress private commit peaks near 2.43 GiB and completed archive responses total about 1.04 GB. This is a measured deployment-budget concern, not proof of an unbounded leak or permission to change geometries. Broader remote/device technical verification remains a release gate.
+- Dataset versions must be pinned together. A replacement archive may reuse summaries only after validating its IDs, measurements and missingness against the existing publication. A verified delivery-only repair or zoom extension does not require rewriting unchanged statistics; changes to the modeled population or measurements require a compatible new statistical publication. The current delivery has separate source/output fingerprints and repair provenance.
 
 ## Change log
+- 2026-10-26: User-approved post-UAT technical QA, with no UI redesign/full functional UAT replay. Measured full-viewport empty checks replaced by bounded existence queries (approximately 96% lower query time in the paired test); decoded cache bounded to two zoom levels after hardware responsiveness/memory concerns. Final hardware soak, Range/data integrity, 62 tests, typechecks and build pass. Prior failed attempt retained; remote hosting and performance/publication gates remain open. See TECHNICAL_QA_REPORT.md.
+- 2026-10-26: User-approved surgical z13–18 delivery repair after original GeoPackage became available. All 76 reported source MVT issues were verified against exact source values; 78 clipped field instances across 45 IDs and three tiles restored in separate archives. All geometry/ID/type and unrelated records retained, 37,707 other compressed tiles unchanged, original inputs fingerprint-preserved and application rollback captured. Shared viewer/endpoint settings use native z13–18; statistics and publication provenance remain unchanged. See ARCHIVE_REPAIR_REPORT.md and ARCHIVE_ATTRIBUTE_REPAIRS.csv.
 - 2026-10-26: User-approved Indonesian/English interface with a persistent navbar language switch; modeled-data badge removed. Existing Vue reactivity and a typed paired catalog cover all components, map controls, tooltips/details, number/null formatting, methodology and recovery messages. Statistical datasets, canonical IDs and archive geometry remain unchanged. See LOCALIZATION.md.
 - 2026-10-26: User-requested visual cleanup and map refinement: specified decorative/text elements removed; full-DKI extent corrected by removing the restrictive camera bounds; native fullscreen and Google Imagery added. All 48 tests, typechecks/build, data freshness and updated desktop/mobile/landscape browser checks pass. No production data/archive modifications or publication actions.
 - 2026-10-26: Expanded milestone 3 local demo completed: official PMTiles protocol, local Range/206, geometry-safe map, administrative filters/choropleths, KPI/chart scopes, real building details and responsive UI. All 47 tests, typechecks, data freshness, production build and actual-app Chrome regression pass. Raw/public data and archives remain unchanged; no upload/deployment/commit/push. See LOCAL_DEMO.md.

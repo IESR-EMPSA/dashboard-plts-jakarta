@@ -52,7 +52,7 @@ tests/map-integration.test.ts
 scripts/qa-app.mjs
 ```
 
-The nine existing `public/data/` files remain unchanged. The 790,567,834-byte archive stays at ignored `data/processed/buildings_eligible_dki.pmtiles`. No archive enters `public/` or `dist/`.
+The nine existing `public/data/` files remain unchanged. The active archive is the ignored `data/processed/buildings_eligible_dki_z13-18_repaired.pmtiles`; shared delivery settings live in `src/map/buildingArchive.ts`. The prior archive remains available for rollback. See ARCHIVE_REPAIR_REPORT.md for GeoPackage verification and exact field corrections. No archive enters `public/` or `dist/`.
 
 ## Implemented frontend data layer (milestone 2)
 The existing publication contract remains unchanged; frontend-specific readonly/filter/scope types live in `src/types/dashboard.ts`. `services/solarDataService.ts` verifies manifest hashes, runtime schemas and compatible releases, with cached summaries and lazy boundaries. `selectors/dashboard.ts` supplies supported KPIs and explicitly scoped marginal charts; administrative × type intersections have no KPI data. `stores/dashboard.ts` uses existing Vue reactivity with per-app ownership, loading/error/retry/refresh state and stale-request protection; `composables/useDashboard.ts` provides injection. Normalization and renderer-owned GeoJSON adapters are now consumed by the map. Milestone 2 required no new dependency; milestone 3 adds the official PMTiles client. See `FRONTEND_DATA_LAYER.md` for the unchanged data APIs and `LOCAL_DEMO.md` for the application.
@@ -66,15 +66,16 @@ VITE_BUILDINGS_PMTILES_URL=https://YOUR-PUBLIC-STORE-URL/buildings_eligible_dki.
 
 ## Map source and layer behavior
 
-The requested next building-tile zoom range is **13–18**. The current archive/viewer and the historical QA below still describe the previously validated z14–16 setup. Update the source archive, inspect its actual metadata, align source/layer zoom settings, and rerun geometry/Range/browser checks before treating z13–18 as implemented.
+The active building-tile zoom range is **13–18**. Source attributes in a separate repaired derivative are verified against the original GeoPackage. The historical z14–16 conversion/geometry evidence below is preserved; current repair and delivery evidence is in ARCHIVE_REPAIR_REPORT.md.
 
 - Register PMTiles protocol once before constructing MapLibre map.
-- Development defaults to `pmtiles://http://localhost:5173/_local/buildings.pmtiles`; a configured public `VITE_BUILDINGS_PMTILES_URL` takes precedence. The local middleware serves bounded single ranges up to 16 MiB, returns 206/Content-Range, and rejects missing/oversized ranges (416), other archive paths (403) and unsupported methods (405). It exists only in Vite serve mode; preview/production require a verified public URL.
+- Development defaults to `pmtiles://http://localhost:5173/_local/buildings-z13-18-repaired.pmtiles`; a configured public `VITE_BUILDINGS_PMTILES_URL` takes precedence. The versioned local identity avoids reuse of previous archive entries. The local middleware serves bounded single ranges up to 16 MiB, returns 206/Content-Range, and rejects missing/oversized ranges (416), other archive paths (403) and unsupported methods (405). It exists only in Vite serve mode; preview/production require a verified compatible public URL.
 - Actual MBTiles `source-layer` is `buildings_eligible_pvout`; recheck the converted PMTiles, never assume `buildings`.
 - Promote `building_uid` for hover/selection across clipped instances. Both building fill and outline apply the proven Polygon predicate plus eligible/admin/type filters; repeated clipped instances are never statistical observations.
-- In the currently validated implementation, administrative choropleth appears at low zoom and footprints start at z14, using the archive through z16 with tested overzoom. Region selection changes choropleth to that region’s districts. NULL annual energy has a separate gray color; no missing generation is converted into zero.
+- Administrative choropleth appears at low zoom and footprints start at z13, using native archive tiles through z18 with overzoom above that level. Source bounds and all visibility/instruction thresholds use shared delivery settings. Region selection changes choropleth to that region’s districts. NULL annual energy has a separate gray color; no missing generation is converted into zero.
 - Style available vs missing PVOUT; keep high-contrast outlines for hover/selection and clear basemap attribution.
 - At any zoom MapLibre may render the same polygon clipped across multiple tile boundaries. Aggregation must not use source feature count.
+- Empty-state detection uses center-first bounded screen-cell queries and invalidates only when viewport/content/appearance changes. It checks existence, not statistical totals, and avoids materializing every visible building on hover/selection repaints. `maxTileCacheZoomLevels: 2` bounds decoded retention (24 building tiles at the tested desktop viewport). This trades memory for refetching; see TECHNICAL_QA_REPORT.md for measured costs and production budgets.
 
 ## QA for local PMTiles and future object storage
 1. Confirm file exists, size and format (vector MVT PMTiles).
