@@ -53,7 +53,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', escape))
   </header>
   <main id="main-content">
     <section id="map-overview" class="map-overview" :aria-label="t('app.overview')">
-      <section class="intro-row"><h1>{{ t('app.title') }}<span>.</span></h1><div class="intro-context"><AppIcon name="pin" :size="18" /><div><strong>{{ t('app.location') }}</strong><span>{{ data ? t('app.areaCounts', { regions: data.regions.regions.length, districts: data.districts.districts.length }) : t('app.preparingAreas') }}</span></div></div></section>
+      <section class="intro-row"><h1>{{ t('app.title') }}<span></span></h1><div class="intro-context"><AppIcon name="pin" :size="18" /><div><strong>{{ t('app.location') }}</strong><span>{{ data ? t('app.areaCounts', { regions: data.regions.regions.length, districts: data.districts.districts.length }) : t('app.preparingAreas') }}</span></div></div></section>
       <div v-if="status === 'error'" class="app-alert" role="alert"><AppIcon name="info" /><div><strong>{{ t('app.dataError') }}</strong><p>{{ errorMessage(error) }}</p></div><button class="button button-outline" @click="dashboard.refresh()">{{ t('app.retry') }}</button></div>
       <div v-if="kpis.status === 'unsupported'" class="unsupported-notice" role="status"><AppIcon name="info" :size="18" /><p>{{ t('app.unsupported') }}</p><button class="text-button" @click="dashboard.setBuildingType(null)">{{ t('app.regionalStats') }} <AppIcon name="arrow" :size="15" /></button></div>
       <KpiCards :selection="kpis" :loading="status === 'loading' || status === 'idle'" />

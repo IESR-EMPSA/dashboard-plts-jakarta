@@ -14,6 +14,17 @@ Vue 3 + TypeScript + Vite, MapLibre GL JS and the official PMTiles client; no ap
 
 English is the default for new visitors; a valid saved ID/EN preference is restored. The navbar **ID / EN** switch translates the interface, numbers, controls, tooltips, details and methodology while preserving selections. See [localization](docs/LOCALIZATION.md) and the [design system](docs/DESIGN_SYSTEM.md).
 
+## Geospatial data pipeline and system architecture
+
+[![Geospatial data pipeline and system architecture showing GIS inputs, offline QGIS analysis, published data assets and the WebGIS dashboard](docs/assets/geospatial-data-pipeline-and-system-architecture.png)](docs/assets/geospatial-data-pipeline-and-system-architecture.png)
+
+1. **Source GIS data:** building footprints, administrative boundaries and Global Solar Atlas PVOUT form the documented analysis inputs.
+2. **Offline analysis:** QGIS processing produces building eligibility, modeled PV capacity, annual generation and statistical exports. The dashboard consumes these existing results.
+3. **Published assets:** CSV summaries are validated and converted to JSON, alongside administrative GeoJSON. Building MBTiles are converted separately to PMTiles using the official Protomaps CLI; the source-verified repaired archive is hosted on Cloudflare R2.
+4. **Web application:** Vercel hosts the Vue 3 + TypeScript frontend and static data. MapLibre GL JS reads building tiles from R2 through HTTP Range requests; dashboard metrics use validated summary statistics.
+
+The illustration summarizes the workflow; full source-topology validation and original GIS-processing verification remain open. See the [data contract](docs/DATA_CONTRACT.md#verification-boundary), [architecture guide](docs/ARCHITECTURE.md) and [deployment guide](docs/DEPLOYMENT.md) for details.
+
 ## Setup and development
 
 Tested with **Node.js 24.19.0** and **pnpm 12.4.1**. Node 24 supplies native TypeScript/SQLite support for data/archive scripts. Keep the committed lockfile.
