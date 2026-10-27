@@ -614,6 +614,13 @@ try {
   const browserVersion = await command('Browser.getVersion')
   console.log(JSON.stringify({ progress: 'navigate', url: appUrl, result: await command('Page.navigate', { url: appUrl }) }))
   await waitFor('!!window.__SOLAR_MAP__', 'Vue / MapLibre initialization')
+  checks.firstVisitLanguage = await evaluate(`({language:document.documentElement.lang,englishSelected:document.querySelector('[data-testid="language-en"]').getAttribute('aria-pressed'),title:document.title,description:document.querySelector('meta[name="description"]').content})`)
+  assert.deepEqual(checks.firstVisitLanguage,{language:'en',englishSelected:'true',title:messages['app.title'].en+' | IESR',description:messages['app.description'].en})
+  assert.deepEqual(await kpiValues(),expectedKpis(regions.overall,'en'))
+  await checkEnglishText()
+  // Existing comparison scenarios use Indonesian explicitly, independent of
+  // the first-visit default and any preference written by this test profile.
+  await setLanguage('id')
   if (layerControlsOnly) {
     await checkLayerControls()
   } else if (chartNavigationOnly) {

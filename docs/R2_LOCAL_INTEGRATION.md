@@ -1,5 +1,7 @@
 # Cloudflare R2 integration with the localhost dashboard
 
+> Historical r2.dev/localhost delivery evidence. Current production uses the R2 custom domain; these earlier performance/DNS measurements are not custom-domain benchmarks. For current setup/deployment and the latest checks, use [README](../README.md), [deployment](DEPLOYMENT.md) and [repository review](PROJECT_REVIEW.md).
+
 ## Result and scope
 
 The repaired zoom 13–18 PMTiles is active in the existing localhost dashboard through `VITE_BUILDINGS_PMTILES_URL` in the ignored `.env.local`. The existing official PMTiles protocol and MapLibre layers required no application-code change. Normal Windows DNS, certificate validation, HTTP Range/206, browser CORS, native zooms, representative building inspections and summary-backed filters pass. This is a localhost delivery acceptance, not a production deployment approval.

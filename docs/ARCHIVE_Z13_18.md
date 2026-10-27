@@ -1,5 +1,7 @@
 # Building archive update: zoom 13–18
 
+> Historical unrepaired conversion/discovery. Its activation blocker was resolved by the separate GeoPackage-verified repair. For current setup/deployment and the latest checks, use [README](../README.md), [deployment](DEPLOYMENT.md) and [repository review](PROJECT_REVIEW.md).
+
 This document preserves the **initial unrepaired conversion and discovery**. The later user-approved repair is verified against the original GeoPackage and activates a separate z13–18 derivative. See [ARCHIVE_REPAIR_REPORT.md](ARCHIVE_REPAIR_REPORT.md) and [the exact correction ledger](ARCHIVE_ATTRIBUTE_REPAIRS.csv) for the current outcome. The unrepaired archive below remains unchanged and inactive.
 
 ## Outcome and activation gate

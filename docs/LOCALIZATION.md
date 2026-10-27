@@ -1,12 +1,14 @@
 # Interface localization
 
-The dashboard supports Indonesian (`id`) and English (`en`). The **ID / EN** switch is in the top navbar, replacing the modeled-data badge. Indonesian is the initial language for a new browser. A valid saved preference takes priority; the application does not infer a language from the operating system.
+> Current localization guide; verification counts and browser results below retain their original feature-stage scope. For current setup/deployment and the latest checks, use [README](../README.md), [deployment](DEPLOYMENT.md) and [repository review](PROJECT_REVIEW.md).
+
+The dashboard supports Indonesian (`id`) and English (`en`). The **ID / EN** switch is in the top navbar, replacing the modeled-data badge. English is the initial language for a new browser. A valid saved preference, including Indonesian, takes priority; the application does not infer a language from the operating system.
 
 ## Implementation
 
 - `src/i18n/messages.ts` contains a typed, paired message catalog. Each key must supply both languages. Parameters have matching names across languages; messages are rendered as plain text, never injected HTML.
 - `src/i18n/index.ts` creates an isolated Vue reactive context and exposes `useI18n()`, `t()`, `n()`, and display-name/error helpers. No localization dependency was added.
-- `src/main.ts` provides the context. `LanguageSwitcher.vue` uses labeled buttons with `aria-pressed`; the chosen language is saved as `jakarta-solar-language` in local storage. Blocked storage falls back to session-only selection. Invalid saved values fall back to Indonesian.
+- `src/main.ts` provides the context. `LanguageSwitcher.vue` uses labeled buttons with `aria-pressed`; the chosen language is saved as `jakarta-solar-language` in local storage. Missing/invalid or inaccessible storage starts in English. When storage is blocked, language switching still works for the current session.
 - `App.vue` updates the document language, page title, and description. Components translate navigation, filters, metric cards, coverage, charts, legends, building details, methodology, tooltips, loading/error/empty states, units containing “year,” and accessibility labels.
 - Number display uses `Intl.NumberFormat` with `id-ID` or `en-US`. Source units and measurement precision remain unchanged. Display conversions still use the existing unit helpers. Null energy is translated as **Tidak tersedia / Unavailable**, never zero.
 - Region and category names are translated only for display. District proper names remain unchanged, except the descriptive North/South Thousand Islands labels. Dataset IDs, canonical/raw names, crosswalks, map expressions, and summary scopes are unchanged. Institutional/product names and third-party basemap credits remain proper names; third-party basemap labels are controlled by the provider.
@@ -17,6 +19,8 @@ Changing language retains the selected region, district, category, building, cam
 Card sizing preserves readable content in both languages: summary cards align headings, values, and notes per row and may grow when text wraps; analytical cards have equal desktop column widths and independent content heights. QA covers 26 DKI/regional/unavailable-generation summary layouts at 320–1920 px, plus a 720×450 viewport at DPR 2 approximating 200% zoom from 1440×900. This viewport simulation is not a complete browser-zoom or accessibility audit.
 
 ## Maintenance and verification
+
+English-first follow-up (2026-10-27): the owner explicitly approved English as the initial/fallback locale. The HTML language/description also start in English; valid saved Indonesian or English preferences still win. Unit tests cover both saved choices, unsupported preferences and blocked storage. The focused browser run verifies actual first-visit English document metadata, EN selection and English-formatted metrics before explicitly switching to Indonesian for the existing comparison scenarios. ID/EN controls/details/layout checks at 320/390/1440 px, all 63 tests, TypeScript, the nine-file data check and the production build pass. Evidence is copied to ignored `data/processed/qa/default-language/app-report.json`. This is a deliberate functional follow-up after the zero-change cleanup; its new build differs from that historical cleanup snapshot. No deployment, commit or production configuration change is performed here.
 
 Use `useI18n()` for every new user-facing string and numeric display. Add both translations to the catalog, use parameters for variable content, and keep data values separate from display labels. Technical validation diagnostics stay in the service errors and developer console; the interface shows translated recovery guidance.
 

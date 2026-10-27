@@ -12,7 +12,7 @@ const districtKeys: Record<string, MessageKey> = { 'Kepulauan Seribu Utara': 'di
 
 /** Per-application state; storage is optional so privacy settings never prevent startup. */
 export function createI18n(storage?: Storage) {
-  const locale = ref<Locale>('id')
+  const locale = ref<Locale>('en')
   try { const saved = storage?.getItem(LANGUAGE_STORAGE_KEY); if (saved === 'id' || saved === 'en') locale.value = saved } catch { /* Storage may be blocked. */ }
   function setLocale(value: Locale) {
     if (value !== 'id' && value !== 'en') return

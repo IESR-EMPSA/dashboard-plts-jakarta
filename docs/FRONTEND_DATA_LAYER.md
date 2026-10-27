@@ -1,5 +1,7 @@
 # Milestone 2 — frontend data services and filter semantics
 
+> Current data API guide; the verification/handoff section preserves the original milestone-2 snapshot. For current setup/deployment and the latest checks, use [README](../README.md), [deployment](DEPLOYMENT.md) and [repository review](PROJECT_REVIEW.md).
+
 This is the milestone 2 handoff. The data APIs remain unchanged and are now consumed by the milestone 3 application; see LOCAL_DEMO.md for current UI, map, browser evidence and release gates.
 
 ## Status and scope
@@ -53,7 +55,7 @@ An available result contains scope and data. Its data retains MWp/GWh and counts
 
 Regional and type chart selectors explicitly advertise DKI scope. District comparisons advertise DKI or the selected parent region. These marginal charts do not imply support for an administrative × type intersection. Unknown administrative comparison IDs return invalid, not a misleading empty chart.
 
-The type selection can remain combined with administrative filters for future map-only exploration, but combined KPIs have no data. `selectBuildingTypeLabels()` supplies every explicit raw label, including uppercase aliases, for a future tile filter; it does not build a layer/expression. Null type means no category predicate, not an empty matching set.
+The type selection combines with administrative filters for map-only exploration, while combined KPIs have no data. `selectBuildingTypeLabels()` supplies every explicit raw label, including uppercase aliases, to the building filter in `src/map/mapModel.ts`; the selector itself does not build a layer/expression. Null type means no category predicate, not an empty matching set.
 
 ## Filter actions
 Call setters after summaries are ready. The public filter object is readonly.
@@ -67,15 +69,15 @@ dashboard.resetFilters()              // returns to DKI
 
 Region/type options contain validated records; district options are empty until a parent is selected and then contain only that parent's districts. Choosing a type does not silently discard administrative selection to make statistics appear supported.
 
-## Crosswalk and future tile adapter
+## Crosswalk and tile adapter
 `createNormalizers(data)` resolves region codes/raw/canonical names, parent-scoped district codes/raw/canonical names, and type IDs/raw labels. Unknown/ambiguous matches resolve to null; no fuzzy matching or invented code is used.
 
 `adaptBuildingProperties(raw, data)` validates eligibility, string building_uid, administrative/type identities, finite numeric measurements and PVOUT consistency. It maps raw useable_m2 to usable_m2, assigns stable region_id/district_id/type_id, and normalizes omitted NoData yield/energy fields to null. Available zero yield/energy remains zero. Contradictory status/fields, numeric-string measurements, unknown categories and inconsistent parents are rejected. It does not recalculate areas, capacity or solar output and does not inspect/repair geometry.
 
-Use `copyBoundaryGeoJson(boundaries)` once when handing data to a renderer. It returns mutable, MapLibre-compatible GeoJSON without the publication envelope metadata, preserving IDs and coordinates. Renderer mutations cannot affect cached geometry. Actual source/layer creation belongs to milestone 3.
+Use `copyBoundaryGeoJson(boundaries)` when handing data to the renderer. It returns mutable, MapLibre-compatible GeoJSON without publication envelope metadata, preserving IDs and coordinates. Renderer mutations cannot affect cached geometry. `SolarMap.vue` consumes this adapter and creates the actual sources/layers.
 
 ## Vue consumption example (documentation only)
-Provide a single store for the app. This data API example is now used by milestone 3 src/main.ts (with the Vite base URL supplied to the service):
+Provide one data store and one localization context for the app, as in `src/main.ts`. This excerpt shows the current provider setup; storage is optional:
 
 ```ts
 import { createApp } from 'vue'
@@ -83,14 +85,18 @@ import App from './App.vue'
 import { dashboardKey } from './composables/useDashboard'
 import { createDashboardStore } from './stores/dashboard'
 import { createSolarDataService } from './services/solarDataService'
+import { createI18n, i18nKey } from './i18n/index'
 
 const app = createApp(App)
+let storage: Storage | undefined
+try { storage = window.localStorage } catch { /* Restricted browsers can block storage. */ }
+app.provide(i18nKey, createI18n(storage))
 const service = createSolarDataService({ baseUrl: `${import.meta.env.BASE_URL}data/` })
 app.provide(dashboardKey, createDashboardStore(service))
 app.mount('#app')
 ```
 
-A future component can use the shared loading/filter state without owning another cache:
+A minimal data-layer component can use shared state without another cache. This intentionally omits production presentation/translation components; use `useI18n()` and `errorMessage()` for user-facing labels/errors:
 
 ```vue
 <script setup lang="ts">
@@ -115,7 +121,7 @@ const capacityGwp = computed(() => kpis.value.status === 'available'
 
 For generation, use gwhToTwh and preserve null. Every future generation visualization still needs its PVOUT coverage caption. Format only at display time; selectors retain original measurement units and precision.
 
-## Verification and handoff
+## Historical milestone-2 verification and handoff
 - 41/41 tests pass: the original 16 plus 25 frontend tests. Cases cover real totals/all administrative and type records, integrity/version/schema errors, null/zero, ratios, lazy loading/caching/retries/timeouts, supported scopes, parent reset, Vue injection/isolation, refresh races, aliases, tile adaptation and renderer-owned geometry.
 - Existing Vue, Vite configuration and strict data/test TypeScript checks pass.
 - pnpm.cmd data:check passes with the original data version and output bytes; production build passes.

@@ -1,5 +1,7 @@
 # GeoPackage-verified building archive repair
 
+> Preserved repair/source-verification evidence. No-upload/no-deployment statements describe the repair stage. For current setup/deployment and the latest checks, use [README](../README.md), [deployment](DEPLOYMENT.md) and [repository review](PROJECT_REVIEW.md).
+
 Follow-up: manual functional UAT is approved. Current technical performance/stress findings, confirmed-issue fixes, 62-test verification and remaining production blockers are in [TECHNICAL_QA_REPORT.md](TECHNICAL_QA_REPORT.md). The archive and the repair evidence below remain unchanged; no new source/statistical correction was performed during technical QA.
 
 ## Result

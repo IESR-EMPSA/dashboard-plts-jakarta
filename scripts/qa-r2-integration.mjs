@@ -171,6 +171,8 @@ try {
   step='initial';const initial=Date.now();await command('Page.navigate',{url:base})
   await waitFor(`!!window.__SOLAR_MAP__&&!!window.__SOLAR_MAP__.getLayer('solar-building-fill')`,'initial map')
   result.initialReadyMs=Date.now()-initial
+  // This historical comparison uses Indonesian formatting regardless of the app's first-visit default.
+  await evaluate(`new Promise(resolve=>{document.querySelector('[data-testid="language-id"]').click();requestAnimationFrame(()=>requestAnimationFrame(resolve))})`)
   result.actualSource=await evaluate(`window.__SOLAR_MAP__.getSource('solar-buildings').url`)
   if(mode!=='probe')assert.equal(result.actualSource,`pmtiles://${expectedUrl}`)
   await evaluate(`window.__DELIVERY_QA__={contextLost:0};document.addEventListener('webglcontextlost',()=>window.__DELIVERY_QA__.contextLost++,true);window.__SOLAR_MAP__.on('error',e=>console.error('delivery-map-error',e.sourceId??'',e.error?.message??''))`)

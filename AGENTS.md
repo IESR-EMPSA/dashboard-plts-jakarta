@@ -15,7 +15,7 @@ Before planning or editing, read in this order:
 ## Non-negotiable constraints
 - Inspect the existing repository before changing code. **Do not reinitialize, overwrite, or replace its tooling/configurations** unless requested and justified.
 - Default stack: Vue 3, TypeScript, Vite, MapLibre GL JS, `pmtiles`, static JSON; use existing UI/state/chart libraries where sensible. Prefer `pnpm` if that is the established package manager.
-- Intended hosting: Vercel frontend; the repaired PMTiles is uploaded to Cloudflare R2 and its public development URL is verified with the localhost dashboard. Production custom-domain/CORS/deployment gates remain; see `docs/R2_LOCAL_INTEGRATION.md`. The superseded Blob preference is recorded in `docs/DECISIONS_AND_RISKS.md`. No application backend/database by default.
+- Current hosting: owner-confirmed Vercel frontend on production branch `main`, with repaired PMTiles served through the Cloudflare R2 custom domain. See `docs/DEPLOYMENT.md` for URLs and read-only verification. `docs/R2_LOCAL_INTEGRATION.md` preserves earlier r2.dev evidence. No application backend/database.
 - Visible building layer is **eligible buildings only** (1,470,399 polygons) from `buildings_eligible_pvout` (verify geometry and export before use). The total building denominator (1,747,249) comes from authoritative summaries, not the tiles.
 - Do not recompute solar modeling in frontend or derive global totals from currently loaded vector tiles.
 - Preserve units: `capacity_kwp`, `capacity_mwp`, `annual_kwh`, `annual_gwh`, `pvout_1` in kWh/kWp/year.
@@ -29,12 +29,13 @@ Before planning or editing, read in this order:
 
 ## Engineering behavior
 - Before each phase: inspect current files, summarize changes and any blockers, and propose a small plan.
-- Complete approved stages sequentially and stop at the user's approved boundary. No unrequested commits, pushes, uploads, deployments, or external writes. Manual functional UAT is approved; do not repeat the full functional UAT or redesign approved behavior. The current follow-up authorizes R2-to-localhost integration, focused delivery/performance checks and final automated verification only. Do not re-upload datasets, change credentials/Windows DNS/bucket policies, or deploy the frontend. See `docs/R2_LOCAL_INTEGRATION.md` for the accepted scope and network diagnosis.
+- Complete approved work sequentially and stop at the user's boundary. Manual UAT and deployment are complete. The current follow-up authorizes repository audit, internal cleanup and documentation review with **zero functional changes**: preserve UI, features, interactions, analysis, statistics, data, production configuration and performance. Report risky changes instead of executing them. Record baseline and after-checks; preserve build/publication/archive fingerprints. No commit, push, upload, deployment or external write. Do not change credentials, DNS, bucket/CORS policies or hosting settings.
+- Subsequent explicit approval changes the first-visit/default language to English while preserving valid saved ID/EN preferences. This supersedes the cleanup's zero-functional-change boundary only for the language default. Other behavior/data and production settings remain protected; no commit, push or deployment is authorized.
 - Favor typed data models, small Vue components, explicit loading/error/empty states, accessibility, and a responsive map-first UI.
 - Add validation/tests for transformations and filter behavior. Run existing typecheck, lint, tests and build where available; report which checks actually ran.
 - Leave a brief handoff: changed files, behavior, evidence of validation, known gaps, next milestone.
 
 ## Sources of truth
 - Export arithmetic is file-validated in `docs/DATA_CONTRACT.md`; original GIS/model/topology and licensing checks remain pending. Detailed evidence belongs in `docs/`, not this guide.
-- The real repository is authoritative for package versions, scripts, and directory structure.
+- The real repository is authoritative for package versions, scripts, and directory structure. `README.md` is the main entry point and `docs/README.md` indexes current guides and historical evidence.
 - External `docs/*.md` specifications guide intent; where they conflict with actual exported schemas, stop and document the mismatch before adapting.

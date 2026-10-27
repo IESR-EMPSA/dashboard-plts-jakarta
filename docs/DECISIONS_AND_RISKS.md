@@ -4,12 +4,12 @@
 1. Research dashboard covers DKI Jakarta; first map displays **eligible rooftops only**.
 2. QGIS GeoPackage outputs are authoritative analysis data; frontend does not repeat GIS potential calculations.
 3. Frontend uses existing Vue 3 + TypeScript + Vite project with MapLibre.
-4. Intended hosting uses Vercel frontend and static JSON/PMTiles, **no PostGIS**. The repaired archive is uploaded to Cloudflare R2 and its public development URL is accepted for localhost integration. Production custom-domain/origin/cost and frontend deployment gates remain; no additional upload or deployment is authorized.
+4. Production uses Vercel frontend and static JSON/PMTiles, **no PostGIS**. The owner confirms deployment from `main` and R2 custom-domain delivery. Public HTTP/static-file/Range/CORS checks are recorded in [deployment](DEPLOYMENT.md); no hosting settings were changed during audit.
 5. Tiles are delivery/visualization medium; aggregates come from QGIS summary tables.
 6. Site-level `pvout_1` can be null. `annual_gwh` also null where no yield, but eligible capacity remains available.
 7. V1 uses 6 kab/kota, 44 kecamatan, 7 building types.
 8. The active building-tile zoom range is **13–18**, using a separate GeoPackage-verified attribute-only repair. The original sources, initial converted file, prior z14–16 archives and QA records are preserved. See ARCHIVE_REPAIR_REPORT.md for the exact 76-issue ledger and rollback.
-9. Manual functional UAT is approved. Subsequent work is technical QA and confirmed-issue fixes only. Bounded visual existence checks and two-level decoded cache retention preserve the approved UI/data behavior. Continuous local runs and 62 automated tests pass, but remote hosting and target-device memory/bandwidth sign-off remain required; see TECHNICAL_QA_REPORT.md.
+9. Manual UAT and deployment are complete. Current maintenance is **zero functional change**: preserve runtime behavior, UI, data, configuration and performance. Historical cache/navigation evidence is in TECHNICAL_QA_REPORT.md; current baseline/preservation checks are in [repository review](PROJECT_REVIEW.md). Broader device/bandwidth and source-model/rights certification are separate from deployment.
 
 ## Local demo decisions (approved milestone 3)
 
@@ -25,14 +25,16 @@
 - Fixture-first implementation is replaced with actual CSV preprocessing because the exports now exist and reconcile. Synthetic validation cases must stay out of production outputs.
 - Explicit crosswalks now resolve six region names, five district-name differences and uppercase type aliases. Raw useable_m2 maps to public usable_m2; omitted energy maps to null without recalculation.
 
-## Confirmations needed before calling release production-ready
+## Evidence and remaining limitations
+
+The frontend is deployed. This table preserves technical verification boundaries; it is not a claim that deployment is still waiting for localhost integration. Historical benchmark/test counts describe their original stages. Current delivery and maintenance evidence are in [deployment](DEPLOYMENT.md) and [repository review](PROJECT_REVIEW.md).
 | Item | Current state | Consequence |
 |---|---|---|
-| PMTiles generated | Current separate repaired z13–18 archive: 1,667,964,549 bytes; official CLI verify passes; 33 samples include all repaired tiles | Original archives preserved; remote hosting pending; see ARCHIVE_REPAIR_REPORT.md |
-| Source-layer name | buildings_eligible_pvout in both archives | Actual layer used in both application building layers |
+| PMTiles generated | Separate repaired z13–18 archive: 1,667,964,549 bytes; container/payload/source checks retained | Original archives preserved; R2 custom domain serves bounded 206; see ARCHIVE_REPAIR_REPORT.md and DEPLOYMENT.md |
+| Source-layer name | buildings_eligible_pvout in preserved/current archives | Ordinary fill, highlight fill and outline share the same verified source/filter |
 | Source size/zoom | Supplied z13–18 MBTiles: 1,697,189,888 bytes; 37,710 tiles; source attribute defects verified against the original GeoPackage | Separate repaired derivative changes only 78 field instances in three tiles; geometry/identity/zoom preservation checked; production budgets pending |
 | Source attribute verification | GeoPackage now present; all 76 reported issues verified by building_uid, including fields outside detail panels | Zero unresolved attribute mismatches in the repaired derivative; exact exporter implementation remains unknown |
-| Remote CORS and Range 206 | R2 object uploaded and localhost integration verified; bounded 206, both localhost origins and real remote MapLibre pass | Production custom-domain/origin/cost remain separate gates; see R2_LOCAL_INTEGRATION.md |
+| Remote CORS and Range 206 | Historical localhost tests retained; current custom-domain 206 and exact production-origin CORS verified read-only | Hosting dashboard settings, broader origins/cache/device/cost budgets were not recertified; see DEPLOYMENT.md |
 | Normalized JSON/frontend services | Original nine files retained; manifest/runtime-validated services and filter semantics implemented; 41 tests pass | Local map/dashboard now implemented; production release gates remain |
 | Administrative polygons | 6 regions + 44 districts present; joins resolve explicitly | Full topology/assignment/source rights pending |
 | Type-0 geometry instances | Empty instances at every zoom; browser reproduces tile failures and validates polygon filtering | Keep source unchanged; both app building layers use the tested Polygon predicate; clean re-export needs separate approval |

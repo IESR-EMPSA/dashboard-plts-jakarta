@@ -8,27 +8,27 @@
 - Distinguish missing/uncertain PVOUT from zero and from ineligible buildings.
 
 ## Layout
-**Desktop:** top header (brand/title + methodology + reset), four KPI cards beneath, side filter/analytics pane (approximately 300–380 px, collapsible), main MapLibre map, clear legend and selection detail panel.
+**Desktop:** top header (brand, section navigation, language and methodology), four metric cards, a compact 216–244 px filter/coverage sidebar, MapLibre map, legend and building details. Sidebar collapse is not an implemented feature.
 
-**Mobile:** compact KPI carousel/two-column blocks, full width map, filters as drawer, building details as bottom sheet, charts beneath or in tabs. The map must remain usable under touch.
+**Mobile:** two-column metric cards, inline stacked filters, full-width map, scrollable building details at the bottom and stacked charts. A filter drawer, metric carousel and chart tabs are not current layout features.
 
 ## Components
 - `KpiCards`: Capacity GWp, Covered Generation TWh/year, Eligible Count, Eligibility Rate; secondary PVOUT coverage.
 - `AdminFilters`: region and district dropdown, sensible dependent behavior; type only when cross-filter semantics are explicit.
 - `SolarMap`: admin polygons/choropleth, district outlines, eligible footprints; scale/control and attributions.
 - `BuildingDetails`: field name, source, type, location, area, modeled usable area, kWp, specific PVOUT, modeled energy, explicit no-data state.
-- `MapLegend`: active metric color scale and missing PVOUT meaning.
-- `RegionComparison`: sortable bar chart for 6 regions; toggle MWp vs GWh (do not overlay incomparable scales without a toggle).
-- `TypeBreakdown`: 7 types, capacity/generation/eligible counts. "Tidak diketahui" displayed, not silently dropped.
-- `PvoutCoverage`: availability by building count and MWp; warn for Kepulauan Seribu.
-- `MethodologyPanel`: GIS methods, numeric assumptions, source citation/license, limitations and update date after verified.
+- `SolarMap.vue` also renders the legend: active metric colour scale and missing-PVOUT meaning; there is no separate MapLegend component.
+- `AnalyticalCharts.vue` contains region/district comparison with GWp/TWh metric selection and Back/Reset, DKI-wide seven-type capacity bars in MWp, and eligibility/PVOUT count coverage. Unknown type remains visible. These are sections of one component, not separate RegionComparison/TypeBreakdown files.
+- `CoverageCard.vue` displays count-based PVOUT coverage and unavailable buildings for supported scopes. Capacity-weighted coverage is available in the data API where supported, not a separate current UI chart.
+- `MethodologyPanel.vue` explains GIS steps, numeric assumptions, coverage/nulls and statistical scopes. Source provenance and certification boundaries remain in the data documentation.
+- `LanguageSwitcher.vue` provides the persistent ID/EN navbar control.
 
 ## Recommended UX details
 - Non-eligible polygons **not shown** in map v1, but eligibility rate uses full denominator and should be labelled appropriately.
 - Hover lightweight tooltip; click opens full detail. Popup and chart interaction keyboard-accessible.
 - Analyzing a district moves map to its bounds; one reset returns to full DKI.
 - Loading and no-data view must not use fake zeroes.
-- Default map background light neutral; analytical color ramps must be accessible and legible against basemap. Colors are implementation choice until real visual design is approved.
+- Preserve the user-approved light surfaces, teal/amber analytical colours and readable map overlays; visual UAT is complete.
 - Avoid false precision: GWp and TWh rounded to 2 decimals for KPI, with more precise units available in detail.
 - Keep a compact PVOUT coverage label on the generation KPI; detailed explanations of coverage, missing values and technical versus installed capacity belong in the methodology modal.
 - Label chart scope explicitly: DKI-wide type values remain DKI-wide under administrative selection until an exact intersection aggregate exists. A map-only type filter cannot imply filtered KPIs.
@@ -47,7 +47,7 @@ The implementation follows the low-emphasis toolbar and icon-label guidance in [
 
 Analytical cards use their content height and align at the top. Chart lists stay close to their headings; they do not stretch or center vertically to match a longer district comparison. Building-type rows place the full category name and MWp value above a slim bar, including longer English labels. The chart-click instruction stays in the comparison footer without an arrow. Annual-energy notes use plain language about available solar energy data; unavailable rows have an empty neutral track and an explicit translated unavailable value rather than a hatched full-length bar. On tablets the eligibility summary uses a compact horizontal layout, and mobile cards stack naturally.
 
-Vintage, rights, full source-model verification and production device/network performance remain release gates. See LOCAL_DEMO.md.
+The frontend is deployed and UAT is approved. Source vintage/rights/model certification and broader device/network budgets remain separate evidence limitations; see [decisions and risks](DECISIONS_AND_RISKS.md).
 
 ## Card sizing policy
 
@@ -60,7 +60,7 @@ The choice follows the content-dependent sizing options in [Microsoft Fluent car
 
 ## Interface language
 
-The top navbar includes a compact **ID / EN** button group in place of the modeled-data badge. Indonesian is the default; a valid saved preference is restored. Active buttons use `aria-pressed` and a raised light background. The switch remains visible beside the methodology control on narrow screens. Both languages cover the full interface, including methodology, tooltips, detail panels, recovery states and accessible labels. Longer English text must preserve the one-screen map layout and avoid mobile horizontal overflow. Numeric grouping, decimal separators, and year-based display units follow the selected language. See [LOCALIZATION.md](LOCALIZATION.md).
+The top navbar includes a compact **ID / EN** button group in place of the modeled-data badge. English is the first-visit default; a valid saved ID/EN preference is restored. Active buttons use `aria-pressed` and a raised light background. The switch remains visible beside the methodology control on narrow screens. Both languages cover the full interface, including methodology, tooltips, detail panels, recovery states and accessible labels. Longer English text must preserve the one-screen map layout and avoid mobile horizontal overflow. Numeric grouping, decimal separators, and year-based display units follow the selected language. See [LOCALIZATION.md](LOCALIZATION.md).
 
 ## Approved visual follow-up
 

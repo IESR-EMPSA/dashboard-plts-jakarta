@@ -1,124 +1,104 @@
 # Jakarta Rooftop Solar Potential WebGIS
 
-A research dashboard for exploring **modeled technical rooftop solar PV potential in DKI Jakarta**. Eligible building footprints appear on the map, while key metrics and charts use validated statistical summaries. The application visualizes existing GIS analysis results rather than an inventory of installed PV capacity.
+A research dashboard for exploring **modeled technical rooftop solar PV potential in DKI Jakarta**. Eligible building footprints appear on the map; key metrics and charts use validated statistical summaries. This visualizes existing GIS analysis, rather than an inventory of installed PV capacity.
 
-## Features and architecture
+- **Dashboard:** [dashboard-plts-jakarta.vercel.app](https://dashboard-plts-jakarta.vercel.app/).
+- **Hosting:** Vercel frontend; Cloudflare R2 PMTiles through `tiles.luthfanadli.my.id`.
+- **Guides:** [documentation index](docs/README.md), [deployment](docs/DEPLOYMENT.md), [latest repository review](docs/PROJECT_REVIEW.md).
 
-- MapLibre visualization of eligible building polygons delivered through PMTiles.
-- **Building-tile zoom range: 13–18.** The active archive is a separate derivative with source attributes verified against the original GeoPackage. See the [repair and validation report](docs/ARCHIVE_REPAIR_REPORT.md).
-- Filters for 6 administrative regions, 44 districts, and 7 building categories, including Kepulauan Seribu.
-- Key metrics for capacity, PVOUT-covered annual generation, eligible building count, and eligibility rate.
-- Choropleths, region/district comparisons, building-category charts, and PVOUT coverage.
-- Building details, fullscreen, OpenFreeMap/Google Imagery basemaps, and a responsive layout.
-- Indonesian and English throughout the interface, with an **ID / EN** switch in the top navbar. The selected language is remembered in the browser; numbers, map controls, tooltips, building details, and methodology update together. See [localization](docs/LOCALIZATION.md).
+Manual UAT and successful deployment are owner-confirmed. The latest review records independent read-only delivery checks, distinct from GIS/model/rights certification. No deployment or production setting was changed during cleanup.
 
-Stack: **Vue 3 + TypeScript + Vite, MapLibre GL JS, and PMTiles**. Statistics and administrative boundaries are static files in `public/data/`. There is no application backend or PostGIS. The Vite middleware for local archive byte-range delivery runs only during development.
+## Application
 
-## Setup and local development
+Vue 3 + TypeScript + Vite, MapLibre GL JS and the official PMTiles client; no application backend or PostGIS. Features include native building zooms **13–18**, administrative choropleths/filters, summary-backed metrics/charts, building details, OpenFreeMap/Google Imagery, fullscreen and building opacity. Six regions, 44 districts and seven building categories are supported.
 
-Tested environment: **Node.js 24.19.0**, **pnpm 12.4.1**, and Chrome with WebGL. Dependency versions are recorded in `pnpm-lock.yaml`.
+English is the default for new visitors; a valid saved ID/EN preference is restored. The navbar **ID / EN** switch translates the interface, numbers, controls, tooltips, details and methodology while preserving selections. See [localization](docs/LOCALIZATION.md) and the [design system](docs/DESIGN_SYSTEM.md).
+
+## Setup and development
+
+Tested with **Node.js 24.19.0** and **pnpm 12.4.1**. Node 24 supplies native TypeScript/SQLite support for data/archive scripts. Keep the committed lockfile.
+
+Replace `<repository-url>` with the Git URL of your repository:
 
 ```sh
-pnpm install
+git clone "<repository-url>" dashboard-plts-jakarta
+cd dashboard-plts-jakarta
+pnpm install --frozen-lockfile
 ```
 
-For local building visualization, provide the validated archive at:
+Choose one building source:
 
-```text
-data/processed/buildings_eligible_dki_z13-18_repaired.pmtiles
+1. **Public R2:** copy [`.env.example`](.env.example) to ignored `.env.local` and set the URL below.
+2. **Local archive:** leave the variable empty and provide `data/processed/buildings_eligible_dki_z13-18_repaired.pmtiles`. Validated local GIS inputs/archives are private and are not included in a clone.
+
+```dotenv
+VITE_BUILDINGS_PMTILES_URL=https://tiles.luthfanadli.my.id/buildings_eligible_dki_z13-18_repaired.pmtiles
 ```
 
 ```sh
 pnpm dev
 ```
 
-Open **http://localhost:5173/**. The port is fixed; use the existing development server if it is already running. Select a region/district and zoom in to inspect buildings. In Windows PowerShell, use `pnpm.cmd` if `pnpm.ps1` is blocked.
+Open **http://localhost:5173/**. The port is strict; reuse a running server. Restart Vite after environment changes. On Windows use `pnpm.cmd` if PowerShell blocks `pnpm.ps1`.
 
-### Public archive configuration
+A configured public URL takes precedence. There is no automatic remote-to-local failover. `VITE_*` values are public browser configuration: never supply tokens or credentials.
 
-Development does not require an `.env` file when the local archive is available. To use a public URL, copy [`.env.example`](.env.example) to `.env.local`, set `VITE_BUILDINGS_PMTILES_URL`, and restart Vite. The URL must support HTTP Range/206 and appropriate CORS. Values in `VITE_*` are visible in the browser; provide public URLs only.
+## Checks and build
 
-The current local environment uses the verified Cloudflare R2 development URL. Clear `VITE_BUILDINGS_PMTILES_URL` and restart Vite to restore local archive delivery. See [R2 localhost integration](docs/R2_LOCAL_INTEGRATION.md) for the exact public URL, normal Windows DNS/browser considerations, Range/CORS evidence and the local/remote performance comparison. This configuration does not deploy the frontend.
+```sh
+pnpm typecheck
+pnpm test
+pnpm data:check
+pnpm build
+```
+
+| Check | Requirements |
+|---|---|
+| `pnpm typecheck`, `pnpm build` | Checkout and installed dependencies; no private datasets |
+| `node --test tests/frontend-data.test.ts tests/map-integration.test.ts tests/localization.test.ts` | Committed `public/data/`; no private GIS inputs |
+| `pnpm test`, `pnpm data:check` | Original eight CSV/GeoJSON inputs and original MBTiles under `data/raw/`; see [pipeline](docs/DATA_PIPELINE.md) |
+| `node scripts/qa-app.mjs --layer-controls-only` | Chrome and repaired local archive; isolated Vite server on port 5175 |
+| `node scripts/qa-app.mjs --chart-navigation-only` or `--map-framing-only` | Chrome and repaired local archive; isolated server on port 5174 |
+
+See the [script inventory](docs/README.md#script-inventory) for retained diagnostics. Browser reports/profiles/screenshots stay in ignored `data/processed/qa/`. `CHROME_PATH` overrides the default Windows Chrome path. No linter is configured.
+
+`data:check` validates without writing. **`pnpm data:prepare` writes publication data** and requires separately approved data-processing work. Even cosmetic edits to producer files/publication types can change provenance; see [pipeline](docs/DATA_PIPELINE.md).
 
 ```sh
 pnpm build
 pnpm preview
 ```
 
-Open the preview URL printed by Vite. Preview/production does not expose the local archive endpoint; building visualization requires a public URL configured at build time. Without that URL, the administrative map remains available with an archive configuration notice.
+Preview serves `dist/` at Vite's printed URL. Preview/production needs the public PMTiles URL **at build time**; the local Range middleware is development-only. Archives are never bundled. The existing MapLibre bundle-size advisory is documented in the repository review.
 
-## Data and interpretation
+## Data semantics
 
-- Eligibility denominator: **1,747,249 analyzed buildings**, of which **1,470,399** are eligible for the building layer.
-- **1,466,275** eligible buildings have PVOUT; **4,124** do not. Unavailable annual generation remains `null` and is never replaced with zero.
-- Source measurements use MWp for capacity and GWh/year for generation. GWp/TWh conversions happen only for display.
-- Key metrics are never calculated from visible tiles. Exact **administrative area × building type** statistics are unavailable and explicitly marked unsupported. Building-category charts retain their DKI-wide scope.
-- Do not edit generated `public/data/` files manually. The manifest, crosswalks, statistics, and geometries must belong to a compatible processing release.
+- **1,747,249 analyzed buildings** form the denominator; the map contains only **1,470,399 eligible buildings**.
+- **1,466,275** eligible buildings have PVOUT; **4,124** do not. Missing annual generation stays `null`, never zero.
+- Source summaries use MWp and GWh/year; GWp/TWh conversions are for display.
+- Totals never come from visible tiles. Exact administrative area × building-type aggregates are unavailable; combined statistical selections remain explicitly unsupported.
+- Preserve the nine compatible, manifest-validated files in `public/data/`. Do not hand-edit or regenerate them during application cleanup.
 
-Private inputs for preprocessing and the full test suite must be available in `data/raw/`:
+See [data contract](docs/DATA_CONTRACT.md), [frontend data APIs](docs/FRONTEND_DATA_LAYER.md) and [verified archive repair](docs/ARCHIVE_REPAIR_REPORT.md).
 
-```text
-admin_kabkot_dki.geojson          admin_kecamatan_dki.geojson
-summary_capacity_dki.csv         summary_eligibility_dki.csv
-summary_generation_dki.csv       summary_jenis_dashboard.csv
-summary_kecamatan_dashboard.csv  summary_pvout_coverage.csv
-buildings_eligible_pvout.mbtiles
-```
-
-This directory is ignored by Git. See the [data contract](docs/DATA_CONTRACT.md) and [data pipeline](docs/DATA_PIPELINE.md) for schemas, units, crosswalks, and provenance.
-
-## Validation and tests
-
-| Command | Purpose | Required data/tools |
-|---|---|---|
-| `pnpm typecheck` | Check Vue, Vite configuration, scripts, and TypeScript tests | No private data required |
-| `pnpm build` | Build the static frontend into `dist/` | Checkout and dependencies; archives are not bundled |
-| `node --test tests/frontend-data.test.ts tests/map-integration.test.ts tests/localization.test.ts` | Run 41 data-service, filter, renderer, middleware, and localization tests | `public/data/`; no private inputs |
-| `pnpm test` | Run all 62 tests, including the data pipeline and surgical attribute-repair safeguards | Original preprocessing inputs in `data/raw/` and crosswalks |
-| `pnpm data:check` | Check all nine generated outputs without rewriting them | All `data/raw/` inputs and crosswalks |
-| `pnpm data:prepare` | Validate inputs and regenerate public outputs | Approved data-processing work only |
-| `node scripts/qa-app.mjs` | Test the actual browser app: both languages, map, Range, filters, key metrics, layout, and icons | Development server, local PMTiles, Chrome |
-| `node scripts/qa-app.mjs --chart-navigation-only` | Focused stable chart toolbar, Back/reset, methodology-copy relocation, keyboard focus and 320–1920 px layouts in both languages | Chrome and the local archive; starts/closes an isolated Vite server/cache on port 5174 without changing the main dashboard's R2 configuration |
-| `node scripts/qa-app.mjs --layer-controls-only` | Focused building-opacity disclosure, actual paint changes/inspection, retained values, keyboard controls and bilingual 320–1440 px layouts | Chrome and the local archive; isolated Vite server/cache on port 5175, leaving primary R2 configuration unchanged |
-| `node scripts/qa-app.mjs --opacity-response-only` | Real mouse drags at zooms 13, 16 and 18; assert continuous rendered opacity, zero source-tile reprocessing and no additional Range responses during dragging | Chrome and the local archive; isolated Vite server/cache on port 5175; diagnostic evidence under ignored `data/processed/qa/opacity-response-after/` |
-| `node scripts/qa-app.mjs --archive-update` | Also inspect all 45 repaired building IDs with real mouse clicks and GeoPackage-verified values | Repaired archive and source-check evidence; see the repair report |
-| `node scripts/qa-technical.mjs --label=local --minutes=5 --gpu=default` | Continuous technical navigation, memory, responsiveness, Range and rendering checks; does not replay functional UAT | Development server, repaired archive, local acceptance evidence, Windows Chrome/PowerShell |
-| `node scripts/qa-r2-integration.mjs --mode=remote --label=remote` | Focused R2 delivery, native zooms 13–18, real details and summary-backed filters; comparable local route via `--mode=local` | Development server configured for the chosen source, local archive for byte comparison, Windows Chrome; normal Windows DNS, no IP overrides |
-
-Application QA uses an existing Chrome installation; `CHROME_PATH` can point to another location. The default browser path follows the Windows Chrome installation. JSON reports, screenshots, and temporary profiles are written under `data/processed/qa/` and remain outside Git. No linter is configured.
-
-The `qa-archive.mjs`, `qa-browser.mjs`, and `scripts/qa/` diagnostic pages preserve the earlier geometry investigations. They require the original archives and the CLI at `.tools/pmtiles/pmtiles.exe`; the browser diagnostic also requires the historical archive QA report. See [geometry QA](docs/GEOMETRY_QA.md) for limitations. `node scripts/qa-archive-update.mjs --repaired` audits the active zoom 13–18 derivative. The [repair report](docs/ARCHIVE_REPAIR_REPORT.md) records source verification, exact corrections and rollback paths. The original GeoPackage and all archives remain private, immutable and outside Git/public assets.
-
-## Repository structure and Git policy
+## Repository structure
 
 ```text
-src/                  Components, data services, selectors, store, types, and map
-public/data/          Nine validated outputs required by the frontend
-data/crosswalks/      Reviewed source-name and category mappings
-data/raw/             Private inputs; ignored by Git
-data/processed/       Local PMTiles and QA artifacts; ignored by Git
-scripts/              Preprocessing, development middleware, and QA tools
-tests/                Real-data tests and in-memory negative cases
-docs/                 Specifications, decisions, and validation evidence
-.tools/               Local CLI binaries; ignored by Git
+src/                  Components, i18n, data services, store, selectors, map
+src/assets/           Bundled IESR branding
+public/data/          Nine versioned runtime publication files
+public/favicon.svg    Solar favicon
+data/crosswalks/      Reviewed source mappings
+scripts/              Preprocessing, local middleware, retained QA tools
+tests/                Data, frontend, map, localization and repair safeguards
+docs/                 Current guides, technical evidence and review
+docs/archive/         Superseded milestone/review snapshots
+data/raw/             Ignored original GIS inputs; preserved locally
+data/processed/       Ignored archives, rollback copies and QA evidence
 ```
 
-**Keep in Git:** source code, tests, QA scripts, documentation, configuration, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `data/crosswalks/`, all `public/data/` files, and a credential-free `.env.example`.
+## Deployment and Git hygiene
 
-**Ignored by Git:** dependencies, builds, caches, test reports, private GIS inputs/outputs, large archives and rasters, local environment configuration, Vercel/Wrangler state, personal workspace settings, and temporary/backup files. Share `.vscode/extensions.json` for the Vue extension recommendation.
+The frontend is already deployed on Vercel from `main`; PMTiles is delivered separately through R2's custom domain. [Deployment documentation](docs/DEPLOYMENT.md) records the URLs, environment/build expectations and verification limits. Hosting settings are managed outside this checkout; the current page-anchor navigation does not need new route rewrites.
 
-Before committing, inspect `git status --short`, `git diff --stat`, and `git diff --cached --stat`. Ignore rules protect untracked files; they do not automatically stop tracking files already committed. The repository screening found no tracked private archives, builds, or environment files requiring removal from the index.
-
-## Status and documentation
-
-Manual functional UAT is approved. The [technical QA report](docs/TECHNICAL_QA_REPORT.md) records continuous GPU/software stress, memory and Range measurements and confirmed performance fixes. The [R2 integration report](docs/R2_LOCAL_INTEGRATION.md) records accepted localhost delivery and the reused-local versus remote comparison. All 62 tests, TypeScript, production build and data-integrity gates pass; production-origin CORS, custom-domain delivery and target-device/network budgets remain open.
-
-The repaired archive is uploaded to R2 and integrated with localhost through its public development URL; the dashboard retains a local configuration fallback. Vercel frontend deployment remains a separate, unauthorized stage. Production hosting/costs, publication rights and source-model/topology/vintage verification are still pending. The large map bundle and approximately 9.52 MB of administrative GeoJSON still require production performance budgets.
-
-- [Repository screening and cleanup](docs/PROJECT_REVIEW.md)
-- [Local demo usage and QA evidence](docs/LOCAL_DEMO.md)
-- [Frontend data-service APIs](docs/FRONTEND_DATA_LAYER.md)
-- [Data contract](docs/DATA_CONTRACT.md) and [preprocessing pipeline](docs/DATA_PIPELINE.md)
-- [Architecture](docs/ARCHITECTURE.md), [implementation plan](docs/IMPLEMENTATION_PLAN.md), and [decisions and risks](docs/DECISIONS_AND_RISKS.md)
-
-No redistribution license is assumed. Confirm source-data, imagery, and publication rights before a public release.
+Track code, tests, lockfile, crosswalks, public publication files and reviewed docs/assets. Keep raw GIS data, large archives, credentials, local environment/provider state, builds and QA output out of Git. Ignore rules protect future additions and do not remove local files. Commit, push, upload and deployment require separate authorization.

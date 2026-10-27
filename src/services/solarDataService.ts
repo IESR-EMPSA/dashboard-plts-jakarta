@@ -1,6 +1,6 @@
 import type { AdminBoundaries, DataManifest } from '../types/solar.ts'
 import type { BoundaryLevel, ReadonlyBoundaries, ReadonlyDashboardData, SolarDataService } from '../types/dashboard.ts'
-import { asDataError, assertData, SolarDataError } from './dataError.ts'
+import { assertData, SolarDataError } from './dataError.ts'
 import { BOUNDARY_FILES, DATA_FILES, deepFreeze, validateBoundaries, validateDashboardData, validateManifest } from './dataValidation.ts'
 
 export interface SolarDataServiceOptions {
@@ -76,5 +76,3 @@ export function createSolarDataService(options: SolarDataServiceOptions = {}): S
 
   return { loadSummaries, loadBoundaries, clearCache: () => cache.clear() }
 }
-
-export { asDataError }

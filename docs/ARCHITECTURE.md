@@ -1,110 +1,73 @@
-# Architecture — static-first, no PostGIS
+# Architecture — static frontend and range-addressed building data
 
-## Deployment architecture
+## Deployment
+
 ```mermaid
 flowchart TD
-  A["QGIS GeoPackages + summarized tables"] --> B["Offline ETL / validation"]
-  B --> C["MVT in PMTiles"]
-  B --> D["Validated JSON summaries"]
-  C --> E["Cloudflare R2 — localhost delivery verified"]
-  D --> F["Vercel static frontend public/data"]
-  E --> G["Browser: MapLibre + PMTiles protocol"]
-  F --> H["Vue 3 + TypeScript dashboard"]
-  G --> H
+  A["Original GIS inputs and approved offline preprocessing"] --> B["Validated summary JSON and administrative GeoJSON"]
+  A --> C["Source-verified repaired z13–18 PMTiles"]
+  B --> D["Vercel static frontend"]
+  C --> E["Cloudflare R2 custom domain"]
+  D --> F["Vue 3 / TypeScript browser dashboard"]
+  E --> G["HTTP Range / official PMTiles protocol"]
+  G --> H["MapLibre GL JS"]
+  H --> F
 ```
 
-## Chosen services
-- Frontend: existing Vue 3 + Vite project, intended for Vercel; no deployment authorized yet.
-- Browser map: MapLibre GL JS + `pmtiles` protocol.
-- Data: precomputed, versioned static JSON; PMTiles blob for building geometries.
-- Storage: the repaired archive is uploaded to Cloudflare R2; its public development URL is verified with localhost Range/206, CORS and actual MapLibre interactions. Production custom-domain/origin/cost gates remain. The earlier Blob/SIN1 preference is superseded; decision history is retained in `DECISIONS_AND_RISKS.md`. See `R2_LOCAL_INTEGRATION.md` for measured evidence and the browser/Windows DNS distinction.
-- No production Node API endpoints, FastAPI or PostGIS. Development uses a Vite-only fixed-file byte-range middleware; it is not a deployed application backend.
-- Keep original GeoPackages offline; no upload of raw research datasets into frontend repo.
+The owner confirms production deployment on Vercel from `main`. Buildings are served through `tiles.luthfanadli.my.id`; see [deployment](DEPLOYMENT.md) for exact URLs and read-only verification. No application backend, PostGIS or production Node endpoint is used. Historical r2.dev integration evidence remains in [R2 localhost integration](R2_LOCAL_INTEGRATION.md).
 
-## Important technical distinctions
-- PMTiles = a ranged HTTP-readable archive. Payload contains vector **MVT**. MBTiles is an SQLite-based tile archive, harder to read directly from object storage without a server or special runtime.
-- Static asset distribution does not supply server-side analytics queries. Browser gets global/district/type totals from precomputed summaries, not from visible vector tiles.
-- If a filter combination lacks an exact precomputed aggregate, UI must explicitly disable unsupported derived KPIs or require a new aggregate before enabling that filter combination.
-- Avoid generating an enormous JSON containing all buildings. The browser requests only necessary tiles based on viewport.
+## Runtime modules
 
-## Implemented application modules (milestone 3)
+| Module | Responsibility |
+|---|---|
+| `src/main.ts`, `App.vue` | App-owned providers, document locale/title and dashboard composition |
+| `src/services/` | Manifest/hash/schema verification, release caching, crosswalk normalization and renderer-owned boundary copies |
+| `src/selectors/dashboard.ts` | Null-safe, explicitly supported statistical scopes |
+| `src/stores/dashboard.ts`, `composables/useDashboard.ts` | Shared reactive resources, loading/error/retry and dependent filters |
+| `src/types/solar.ts`, `types/dashboard.ts` | Publication contracts and readonly frontend state |
+| `src/i18n/` | Paired typed ID/EN catalog, number/name/error formatting and stored preference |
+| `src/components/` | Metrics, filters, charts, map, details, methodology and language controls |
+| `src/map/` | Archive constants, official protocol/worker, basemaps, filters/bounds and bounded existence queries |
+| `scripts/dev/pmtilesPlugin.ts` | Fixed-file development-only Range delivery |
 
-The existing project and milestone 2 layer are preserved. The app provides one shared dashboard store; the WebGL map loads as a separate asynchronous module. The official `pmtiles` package is the only new application dependency; charts use native HTML/SVG.
+The WebGL component is loaded asynchronously through `defineAsyncComponent`; it is not an unused static-import omission. Vite emits MapLibre's separate worker from `?worker&url` and `setWorkerUrl`. Dependencies and version selection remain in the existing package/lockfile.
 
-```text
-src/
-  App.vue, main.ts, style.css
-  components/
-    AppIcon.vue
-    dashboard/{KpiCards,CoverageCard,AnalyticalCharts}.vue
-    filters/AdminFilters.vue
-    map/{SolarMap,MapLoading,BuildingDetails}.vue
-    methodology/MethodologyPanel.vue
-  map/{protocol,basemap,mapModel}.ts
-  composables/useDashboard.ts
-  stores/dashboard.ts
-  selectors/dashboard.ts
-  services/{solarDataService,dataValidation,normalization,boundaryGeoJson,dataError}.ts
-  types/{solar,dashboard}.ts
-  utils/{format,presentation}.ts
-scripts/dev/pmtilesPlugin.ts
-tests/map-integration.test.ts
-scripts/qa-app.mjs
-```
+## Data loading and statistics
 
-The nine existing `public/data/` files remain unchanged. The active archive is the ignored `data/processed/buildings_eligible_dki_z13-18_repaired.pmtiles`; shared delivery settings live in `src/map/buildingArchive.ts`. The prior archive remains available for rollback. See ARCHIVE_REPAIR_REPORT.md for GeoPackage verification and exact field corrections. No archive enters `public/` or `dist/`.
+The nine files in `public/data/` remain an unchanged compatible release. Summary requests are deduplicated/cached per service instance; administrative boundaries load lazily. Response bytes are verified against the manifest, then runtime schemas, totals, crosswalks and compatible metadata are checked. Failed requests can be retried; generation tokens prevent stale refresh responses from overwriting newer resources.
 
-## Implemented frontend data layer (milestone 2)
-The existing publication contract remains unchanged; frontend-specific readonly/filter/scope types live in `src/types/dashboard.ts`. `services/solarDataService.ts` verifies manifest hashes, runtime schemas and compatible releases, with cached summaries and lazy boundaries. `selectors/dashboard.ts` supplies supported KPIs and explicitly scoped marginal charts; administrative × type intersections have no KPI data. `stores/dashboard.ts` uses existing Vue reactivity with per-app ownership, loading/error/retry/refresh state and stale-request protection; `composables/useDashboard.ts` provides injection. Normalization and renderer-owned GeoJSON adapters are now consumed by the map. Milestone 2 required no new dependency; milestone 3 adds the official PMTiles client. See `FRONTEND_DATA_LAYER.md` for the unchanged data APIs and `LOCAL_DEMO.md` for the application.
+Renderer-owned boundary copies keep MapLibre mutations separate from readonly cached publication data. The store retains filters across refresh only when compatible and clears district selections when their parent changes.
 
-## Environment variables
-```dotenv
-# PUBLIC URL: safe in browser, no secret
-VITE_BUILDINGS_PMTILES_URL=https://pub-780258dd404b45ddaec3dc7bd19afed1.r2.dev/buildings_eligible_dki_z13-18_repaired.pmtiles
-```
-**Never** use Blob/R2 tokens, access keys or admin credentials in client environment variables. Keep credentials and large archives out of public assets and Git.
+All dashboard totals come from summaries, never rendered/source tile counts. Exact DKI, region, district and DKI-type scopes exist. Administrative area × type and capacity-range aggregates do not. A type predicate may filter buildings while combined metrics remain explicitly unsupported; the type chart stays DKI-wide. Missing PVOUT/annual generation remains null. See [contract](DATA_CONTRACT.md) and [API guide](FRONTEND_DATA_LAYER.md).
 
-The current ignored `.env.local` activates this development URL. An empty value restores local delivery in development after restarting Vite; preview/production requires a public URL at build time. The URL is configuration only: no source layer, style, attribute or statistical calculation changes. There is no automatic fallback that silently masks remote failures.
+## PMTiles and MapLibre
 
-## Map source and layer behavior
+- Delivery settings are centralized in `src/map/buildingArchive.ts`: repaired local file/URL, native zooms **13–18**, source layer `buildings_eligible_pvout`.
+- The official `pmtiles` protocol is registered once; `building_uid` is promoted to preserve hover/selection across clipped instances.
+- Ordinary fill, highlight fill and outline all share the proven Polygon/eligible/admin/type predicates and visibility.
+- The normal fill uses fixed feature-state masking and numeric `fill-layer-opacity`, initially **0.8**, with no opacity transition. A separate highlight fill preserves 0.9 hover/selection emphasis. Slider input does not rewrite feature-dependent expressions or reprocess tiles.
+- Raw `useable_m2` adapts to `usable_m2`; omitted NoData energy becomes null. No measurements, geometries or source IDs are recalculated.
+- Native tiles through z18 support higher display zoom by overzoom. Known empty type-0 instances are preserved in the archive and excluded by the Polygon predicate. Conversion did not repair geometry.
+- Empty-state detection queries center-first bounded screen cells and stops at the first match. Cache retention stays at `maxTileCacheZoomLevels: 2`. These are existing behavior/performance decisions, unchanged by cleanup.
 
-The active building-tile zoom range is **13–18**. Source attributes in a separate repaired derivative are verified against the original GeoPackage. The historical z14–16 conversion/geometry evidence below is preserved; current repair and delivery evidence is in ARCHIVE_REPAIR_REPORT.md.
+Source verification, full payload preservation, fingerprints and rollback are in [repair report](ARCHIVE_REPAIR_REPORT.md); historical geometry investigation is in [geometry QA](GEOMETRY_QA.md). Never infer population counts from clipped feature instances.
 
-- Register PMTiles protocol once before constructing MapLibre map.
-- Development defaults to `pmtiles://http://localhost:5173/_local/buildings-z13-18-repaired.pmtiles`; a configured public `VITE_BUILDINGS_PMTILES_URL` takes precedence. The versioned local identity avoids reuse of previous archive entries. The local middleware serves bounded single ranges up to 16 MiB, returns 206/Content-Range, and rejects missing/oversized ranges (416), other archive paths (403) and unsupported methods (405). It exists only in Vite serve mode; preview/production require a verified compatible public URL.
-- Actual MBTiles `source-layer` is `buildings_eligible_pvout`; recheck the converted PMTiles, never assume `buildings`.
-- Promote `building_uid` for hover/selection across clipped instances. Both building fill and outline apply the proven Polygon predicate plus eligible/admin/type filters; repeated clipped instances are never statistical observations.
-- Administrative choropleth appears at low zoom and footprints start at z13, using native archive tiles through z18 with overzoom above that level. Source bounds and all visibility/instruction thresholds use shared delivery settings. Region selection changes choropleth to that region’s districts. NULL annual energy has a separate gray color; no missing generation is converted into zero.
-- Style available vs missing PVOUT; keep high-contrast outlines for hover/selection and clear basemap attribution.
-- At any zoom MapLibre may render the same polygon clipped across multiple tile boundaries. Aggregation must not use source feature count.
-- Empty-state detection uses center-first bounded screen-cell queries and invalidates only when viewport/content/appearance changes. It checks existence, not statistical totals, and avoids materializing every visible building on hover/selection repaints. `maxTileCacheZoomLevels: 2` bounds decoded retention (24 building tiles at the tested desktop viewport). This trades memory for refetching; see TECHNICAL_QA_REPORT.md for measured costs and production budgets.
+## Basemaps, camera and interactions
 
-## QA for local PMTiles and future object storage
-1. Confirm file exists, size and format (vector MVT PMTiles).
-2. Check PMTiles metadata for zooms, bounds, `vector_layers`/source-layer, property names.
-3. HTTP `Range: bytes=0-15` should return `206 Partial Content` and `Content-Range`.
-4. Browser fetch from deployed Vercel domain must succeed with correct CORS (test, don't assume).
-5. Pan/zoom dense central Jakarta; inspect broken/missing/torn polygons, frame rates, HTTP failures.
-6. Verify selected sample `building_uid`, capacity units, and null PVOUT popup against source QGIS.
-7. Record actual size, latency, requests and storage cost. R2 production should use a custom domain; r2.dev is a rate-limited development endpoint. Cloudflare documents a 512 MB cacheable-object limit for Free/Pro/Business; do not assume a larger PMTiles archive receives ordinary whole-object CDN caching.
+OpenFreeMap Positron and the user's HTTPS Google satellite XYZ endpoint are selectable. Switching changes existing layer visibility without recreating sources or clearing selection. Provider attribution is retained. Google failure falls back to OpenFreeMap; external map failure can use a neutral background. These are read-only external dependencies.
 
-Existing source: `data/raw/buildings_eligible_pvout.mbtiles`, 793,317,376 bytes, 2,659 gzip MVT tiles, z14–16. Official CLI conversion targets ignored `data/processed/buildings_eligible_dki.pmtiles`; run show/verify and compare tile contents. Known type-0 instances require separate diagnostic evidence; conversion is not repair. See `GEOMETRY_QA.md` and `DATA_PIPELINE.md` for schemas, normalization and evidence.
+Opening extent fits the five mainland cities with 10% padding on the smaller map dimension. Extent/reset fits all six actual administrative geometries, including Kepulauan Seribu, with symmetric 24 px padding. Resize/fullscreen refits the current fitted view; manually navigated views retain their camera. Fullscreen targets the entire map panel. Locale changes update labels/attribution/controls in place without replacing the map. See [design](DESIGN_SYSTEM.md) and [localization](LOCALIZATION.md).
 
-The original z14–16 conversion is complete: 790,567,834 bytes (753.9442386627197 MiB), PMTiles v3; show/verify passed and 28 representative tiles are byte-identical. Isolated Chrome/MapLibre 6.15.0 diagnostics reproduce tile-render failures without a geometry predicate and recover tested rendering/hover/click using an explicit Polygon filter. The predicate now protects both application building layers. Actual-app Chrome QA exercises the official PMTiles browser protocol, real mouse hover/click and dense/island views. Current repaired z13–18 delivery also passes R2 Range/CORS and native-zoom checks through normal Windows DNS; see `R2_LOCAL_INTEGRATION.md`. MapLibre 6’s separate worker is delivered through Vite’s `?worker&url` asset and `setWorkerUrl`. See `LOCAL_DEMO.md` for historical local evidence and limitations.
+## Configuration and local delivery
 
-## Basemap and local behavior
+`VITE_BUILDINGS_PMTILES_URL` contains a public URL only. Nonempty configuration takes precedence over the local archive; production/preview embeds it at build time. No credentials or access keys are shipped. There is no silent remote-to-local failover.
 
-OpenFreeMap Positron and the user-specified Google satellite XYZ endpoint are the two selectable basemaps. Google requests use HTTPS (`https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}`) and a raster layer below research overlays. Switching toggles basemap visibility without replacing the style or resetting filters/selection. Provider attribution stays visible; a failed Google layer falls back to OpenFreeMap, and unavailable OpenFreeMap falls back to a neutral background. The neutral background is not a third menu choice. These are external read-only dependencies; no data is uploaded. See [OpenFreeMap quick start](https://openfreemap.org/quick_start/) and [Google attribution guidance](https://developers.google.com/maps/documentation/tile/policies).
+During Vite serve mode only, an empty variable selects the fixed `/_local/buildings-z13-18-repaired.pmtiles` endpoint. The middleware serves bounded single byte ranges up to 16 MiB with 206/Content-Range. Missing/oversized ranges, other archive paths and unsupported methods are rejected. It never copies archives into `public/` or `dist/`.
 
-The native MapLibre FullscreenControl targets the whole map panel, retaining controls/legend/details. The opening extent comes from the five mainland administrative MultiPolygons, with padding equal to 10% of the smaller map dimension. The extent control and administrative reset fit the exact combined bounds of all six regions, including Kepulauan Seribu, with symmetric 24 px padding. A hardcoded maxBounds was removed because its aspect constraint clipped north/south DKI during fitBounds. Opening/full-DKI fitted views refit on resize/fullscreen; manually navigated detail views retain their camera. Demo location controls are removed; representative locations live only in the browser QA helper.
+The dev server stays on strict localhost port 5173. Watch exclusions protect raw/processed archives, browser profiles and local tools. No Vite, PMTiles, environment or Vercel production configuration was changed during repository cleanup.
 
-Vite watches application sources but excludes raw/processed archives, QA Chrome profiles and local tools; otherwise Windows can crash its watcher on the browser’s locked Cookies file. The server binds localhost on strict port 5173.
+## Maintenance and evidence
 
-## Interface localization
+Use [README](../README.md) for commands and [documentation index](README.md) for script prerequisites/evidence. The dev-only `window.__SOLAR_MAP__` hook supports browser QA and is removed by production compilation; retain it. Dynamic icon names, catalog keys, async components, tested contract exports and historical diagnostic pages must not be removed through naive text matching.
 
-The application provides an isolated reactive Indonesian/English context using the existing Vue APIs. A typed paired catalog drives all components, display names, null-safe number formatting, recovery messages and accessibility labels. The navbar switch persists a valid preference locally and does not affect dataset identity, statistical scope or map filters. Native map labels, DOM markers and attribution update in place, retaining sources, camera, selected features and fullscreen. See [LOCALIZATION.md](LOCALIZATION.md) for contracts and regression coverage.
-
-## Hosting fallback
-R2 development delivery is accepted for localhost. Storage remains replaceable through the public URL without rewriting Vue, and the existing local endpoint is available when the environment value is empty. Production custom-domain delivery, production-origin CORS, performance/cost budgets and frontend deployment remain separate gates. No further upload or deployment is authorized in this stage.
-
-References checked during the audit: [PMTiles CLI](https://docs.protomaps.com/pmtiles/cli), [MapLibre integration](https://docs.protomaps.com/pmtiles/maplibre), [storage](https://docs.protomaps.com/pmtiles/cloud-storage), [R2 CORS](https://developers.cloudflare.com/r2/buckets/cors/), [public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/), [cache limits](https://developers.cloudflare.com/cache/interaction-cloudflare-products/r2/).
+[Technical QA](TECHNICAL_QA_REPORT.md) preserves earlier memory/bandwidth measurements and limitations; deployment is not a new hardware/network or source-rights certification. The latest zero-change checks are in [repository review](PROJECT_REVIEW.md).

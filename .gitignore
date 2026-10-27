@@ -29,10 +29,26 @@ logs/
 *.gpkg
 *.gpkg-shm
 *.gpkg-wal
+*.gpkg-journal
 *.tif
 *.tiff
 *.vrt
 *.qgz
+*.qgs
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qix
+*.sbn
+*.sbx
+
+# Private keys and certificate bundles; public URLs belong in .env.example/docs.
+*.key
+*.pem
+*.p12
+*.pfx
 
 # Local environment, provider state, and private workspace configuration
 .env

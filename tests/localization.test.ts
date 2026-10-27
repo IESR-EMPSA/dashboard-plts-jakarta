@@ -18,6 +18,7 @@ test('every message has both languages and matching interpolation parameters', (
 
 test('language changes reactively update messages, numbers, and existing scopes', () => {
   const i18n = createI18n()
+  i18n.setLocale('id')
   const scope = computed(() => `${i18n.regionName('Jakarta Barat')} · ${i18n.typeName('Hunian')}`)
   const metric = computed(() => `${i18n.t('kpi.eligible')}: ${i18n.n(1470399, 0)}`)
   assert.equal(scope.value, 'Jakarta Barat · Hunian')
@@ -65,25 +66,28 @@ test('all published region, district and building type labels have display mappi
   assert.equal(JSON.stringify({ regions, districts, types }), before)
 })
 
-test('language preference survives app recreation and unsupported values default to Indonesian', () => {
+test('new visitors default to English, saved languages survive recreation, and invalid preferences fall back to English', () => {
   const values = new Map<string, string>()
   const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) } }
   const first = createI18n(storage)
-  assert.equal(first.locale.value, 'id')
+  assert.equal(first.locale.value, 'en')
+  first.setLocale('id')
+  assert.equal(values.get(LANGUAGE_STORAGE_KEY), 'id')
+  assert.equal(createI18n(storage).locale.value, 'id')
   first.setLocale('en')
   assert.equal(values.get(LANGUAGE_STORAGE_KEY), 'en')
   assert.equal(createI18n(storage).locale.value, 'en')
   values.set(LANGUAGE_STORAGE_KEY, 'fr')
-  assert.equal(createI18n(storage).locale.value, 'id')
+  assert.equal(createI18n(storage).locale.value, 'en')
 })
 
 test('blocked storage never prevents starting or switching languages', () => {
   const storage = { getItem: () => { throw new Error('SecurityError') }, setItem: () => { throw new Error('QuotaExceededError') } }
   const i18n = createI18n(storage)
-  assert.equal(i18n.locale.value, 'id')
-  assert.doesNotThrow(() => i18n.setLocale('en'))
   assert.equal(i18n.locale.value, 'en')
-  assert.equal(createI18n().locale.value, 'id', 'App instances are isolated')
+  assert.doesNotThrow(() => i18n.setLocale('id'))
+  assert.equal(i18n.locale.value, 'id')
+  assert.equal(createI18n().locale.value, 'en', 'App instances are isolated')
 })
 
 test('errors are understandable in both languages without exposing developer diagnostics', () => {

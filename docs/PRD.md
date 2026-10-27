@@ -16,19 +16,19 @@ Deliver an interactive research WebGIS for exploring **modeled rooftop photovolt
 
 ## Primary screens
 **Single map-centric dashboard**:
-- Header: title, source/methodology button, dataset vintage notice (to verify), and help.
+- Header: IESR symbol/product name, section navigation, ID/EN switch and methodology button. Source-vintage certification remains a separate documentation question.
 - Four primary KPI cards: total estimated PV capacity (GWp), modeled annual energy (TWh/year; partial coverage notice), eligible building count, eligibility rate.
 - PVOUT coverage and number of missing buildings displayed in secondary QA indicator.
 - Filters: kabupaten/kota, kecamatan (dependent on selected city), jenis_group; future capacity-range filters only with a reliable pre-aggregation/query plan.
 - Interactive MapLibre map: basemap, kabupaten/kota polygon outlines and choropleth, 44 kecamatan boundaries (both exports now present; explicit crosswalks required), eligible building polygon layer at high zoom, hover/highlight, clickable building details, legend, zoom and reset controls.
-- Charts: capacity and generation by region; building-type distribution by capacity / generation / count; eligibility comparison and PVOUT coverage. Do not claim cross-filtering unless data supports it.
+- Charts: switchable capacity/generation comparison by region or district, DKI-wide building-type capacity distribution, eligibility and PVOUT coverage. Generation/count variants of the type chart are not current UI features. Do not claim cross-filtering unless data supports it.
 - Side detail panel on feature click with IDs, building type, geographic labels, footprint, modeled usable area, capacity kWp, PVOUT and modeled annual kWh; descriptive NA states when missing.
 - Methodology panel: data sources, assumptions, coverage, known exclusions, uncertainty/disclaimer.
 
 ## Behavioral specification
 ### Interface language
 - Provide Indonesian and English through an ID/EN switch in the top navbar; remove the modeled-data badge.
-- Default to Indonesian for a new browser and restore a valid locally saved selection. Storage restrictions must not prevent language switching.
+- Default to English for a new browser and restore a valid locally saved selection, including Indonesian. Missing/invalid or inaccessible storage falls back to English; storage restrictions must not prevent language switching.
 - Translate all interface components, including detail panels, live tooltips, methodology, map controls, loading/error/empty states and accessible labels. Update document language/title and numeric/year-unit formatting together.
 - Preserve filters, statistical scope, selected buildings and the map camera when switching. Data IDs, canonical names, source measurements, null semantics and unsupported filter combinations remain unchanged.
 
@@ -51,7 +51,7 @@ Deliver an interactive research WebGIS for exploring **modeled rooftop photovolt
 - Open on the five mainland Jakarta cities with modest context, matching the approved reference. The extent control fits the exact combined bounds of all six published administrative geometries, including Kepulauan Seribu, with a small symmetric margin. Resizing/fullscreen retains the active fitted view; manual navigation keeps its camera.
 - The current building-tile zoom range is **13–18**, using a separate GeoPackage-verified repaired archive. The original z14–16 archive and QA remain preserved baseline/rollback evidence; see ARCHIVE_REPAIR_REPORT.md.
 - Never request all building polygons as one GeoJSON.
-- MapLibre loads PMTiles MVT via HTTP Range requests. The repaired archive's Cloudflare R2 development URL is verified with localhost; production domain/origin/deployment gates remain. The preserved local archive remains available through configuration fallback. See R2_LOCAL_INTEGRATION.md.
+- MapLibre loads repaired PMTiles MVT through HTTP Range requests from the Cloudflare R2 custom domain; the frontend is deployed on Vercel. The preserved local archive remains a development configuration alternative, without automatic failover. See [deployment](DEPLOYMENT.md) for current delivery and [R2 localhost integration](R2_LOCAL_INTEGRATION.md) for historical evidence.
 - At low zoom display admin choropleth. Enable individual footprints at a tested higher zoom; exact thresholds based on performance testing.
 - Buildings are eligible; do not display a misleading 'not eligible' layer in V1.
 - Style available vs missing PVOUT distinctly if appropriate. Missing PVOUT buildings still show available modeled capacity.
@@ -78,4 +78,4 @@ Deliver an interactive research WebGIS for exploring **modeled rooftop photovolt
 - Both languages reconcile all 6/44/7 statistical selections, preserve active interactions and remain usable without horizontal overflow on mobile. See LOCALIZATION.md.
 
 ## Current implementation status
-The approved milestone 3 local demo implements the actual MapLibre/official PMTiles protocol, geometry-safe footprints, administrative choropleths/filters, authoritative KPIs/charts and real building details. All six regions, 44 districts and seven type KPI scopes were browser-validated against unchanged summaries; manual UAT is approved. Missing generation and unsupported administrative × type KPIs remain explicit. See LOCAL_DEMO.md for historical implementation evidence. The repaired archive is now uploaded to R2 and its public development URL passes focused localhost Range/CORS, native zoom and detail/filter checks, with configuration fallback to local delivery; see R2_LOCAL_INTEGRATION.md. Original model/topology/licensing, physical-device/performance budgets, production-domain/CORS and frontend deployment remain separate gates. No further upload or frontend deployment is authorized in this integration stage.
+The dashboard is implemented, manual UAT is approved, and the owner confirms Vercel production deployment with the repaired archive served through the R2 custom domain. See [deployment](DEPLOYMENT.md) and [current status](IMPLEMENTATION_PLAN.md). Historical stage-specific tests, local delivery and repair evidence remain in the [documentation index](README.md). This repository audit changes no features, UI, data, performance or production configuration. Original model/topology/vintage/rights certification and device/network budgets remain separate evidence questions.

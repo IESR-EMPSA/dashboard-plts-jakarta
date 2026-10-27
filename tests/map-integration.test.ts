@@ -5,7 +5,7 @@ import test from 'node:test'
 import { archiveMiddleware, LOCAL_PMTILES_PATH, MAX_RANGE_BYTES, parseByteRange } from '../scripts/dev/pmtilesPlugin.ts'
 import { buildingFilter, collectionBounds, geometryBounds, mainlandBounds, POLYGON_FILTER, BUILDING_SOURCE_LAYER } from '../src/map/mapModel.ts'
 import { createSolarDataService } from '../src/services/solarDataService.ts'
-import { numberId } from '../src/utils/presentation.ts'
+import { createI18n } from '../src/i18n/index.ts'
 import { viewportHasFeatures } from '../src/map/renderedFeatures.ts'
 
 const service = createSolarDataService({ fetch: async input => {
@@ -82,10 +82,12 @@ test('opening extent fits the five mainland cities without the northern Seribu e
   assert(bounds[1][1] < full[1][1])
 })
 test('display uses Indonesian numbers and preserves unavailable values', () => {
-  assert.equal(numberId(1470399, 0), '1.470.399')
-  assert.equal(numberId(18.6277669929), '18,63')
-  assert.equal(numberId(null), 'Tidak tersedia')
-  assert.equal(numberId(0), '0,00')
+  const { n, setLocale } = createI18n()
+  setLocale('id')
+  assert.equal(n(1470399, 0), '1.470.399')
+  assert.equal(n(18.6277669929), '18,63')
+  assert.equal(n(null), 'Tidak tersedia')
+  assert.equal(n(0), '0,00')
 })
 test('range parser accepts bounded, suffix and clamped ranges, rejects whole and oversized requests', () => {
   assert.deepEqual(parseByteRange('bytes=0-15', 100), { start: 0, end: 15 })

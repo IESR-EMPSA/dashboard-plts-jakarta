@@ -1,12 +1,14 @@
 # Milestone 3 — Local WebGIS implementation and verification
 
+> Historical milestone-3 local-demo evidence. Old archive paths, zooms and run instructions below are not current setup. For current setup/deployment and the latest checks, use [README](../README.md), [deployment](DEPLOYMENT.md) and [repository review](PROJECT_REVIEW.md).
+
 Current archive update: the application now uses the separate GeoPackage-verified repaired z13–18 PMTiles. See [ARCHIVE_REPAIR_REPORT.md](ARCHIVE_REPAIR_REPORT.md) for current paths, source verification, exact corrections, browser checks and rollback. The milestone-3 z14–16 archive measurements below are historical evidence.
 
 The approved local demo is implemented in the existing Vue project. This stage includes the administrative map, KPIs/charts, building details and basic responsive refinement from the earlier milestone 4–7 breakdown. It stops before remote publication.
 
 ## Run and explore
 
-The requested next building-tile zoom range is **13–18**. The archive/viewer update is pending. The usage and QA observations below describe the currently validated implementation; rerun them after replacing the archive and aligning zoom settings.
+The usage and QA observations below describe the original z14–16 local-demo stage. The subsequent repaired native z13–18 archive is already integrated and deployed. Use the root README for current setup rather than treating the historical paths below as active configuration.
 
 ```powershell
 pnpm.cmd dev

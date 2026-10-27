@@ -65,33 +65,21 @@ Raw type labels also include `HUNIAN`, `NON HUNIAN`, `PEMERINTAHAN`; map these e
 - Annual generation is a **model estimate**, not metered production.
 - Solar resource: Global Solar Atlas PVOUT GeoTIFF currently based on 2019 dataset; verify year, version, licensing, and metadata in publication docs.
 
-## Summary JSON schemas — use normalized public contracts
-`summary_wilayah.json` example shape (values omitted intentionally):
-```json
-{
-  "metadata": { "coverage": "DKI Jakarta", "unitCapacity": "MWp", "unitEnergy": "GWh/year" },
-  "regions": [
-    { "id": "<stable-id>", "wilayah": "<name>", "total_buildings": null, "eligible_buildings": null, "eligibility_rate": null, "capacity_mwp": null, "annual_gwh": null, "pvout_available": null, "pvout_missing": null }
-  ]
-}
-```
-`summary_kecamatan.json` record:
-```json
-{
-  "wilayah": "<kabkot>",
-  "kecamatan": "<district>",
-  "join_key": "<wilayah>|<kecamatan>",
-  "total_buildings": null,
-  "eligible_buildings": null,
-  "eligibility_rate": null,
-  "capacity_mwp": null,
-  "annual_gwh": null,
-  "pvout_available": null,
-  "pvout_missing": null,
-  "pvout_coverage": null
-}
-```
-Example values are **schema placeholders**, not valid measurement values. Actual values must come from verified QGIS tables. Where no generation data exists, keep numeric `null` and convey missingness separately.
+## Published JSON schemas
+
+The actual contracts are defined in [src/types/solar.ts](../src/types/solar.ts) and validated by `src/services/dataValidation.ts`. The earlier placeholder JSON omitted IDs/envelopes and used obsolete metadata keys; it is not a production schema.
+
+| File | Actual envelope / record |
+|---|---|
+| `summary_wilayah.json` | `{ metadata, overall, regions: RegionSummary[] }` |
+| `summary_kecamatan.json` | `{ metadata, districts: DistrictSummary[] }` |
+| `summary_jenis.json` | `{ metadata, types: TypeSummary[] }` |
+| `summary_pvout_coverage.json` | `{ metadata, overall, regions }`; count and capacity coverage |
+| Administrative GeoJSON | `FeatureCollection` with `metadata`, stable string feature IDs and normalized properties |
+
+`SummaryMeasures` contains nonnullable numeric counts/capacity, nullable `annual_gwh`, and nullable count-derived ratios. Region records add `id`, `wilayah` and capacity-weighted coverage. District records add `id`, `region_id`, `wilayah`, `kecamatan`, `join_key`. Type records add `id` and `jenis_group`. Counts/capacity must never be filled with placeholder nulls.
+
+`metadata` carries `schema_version`, `data_version`, producer/source fingerprints, coverage, generation scope, verification limits and nested `units` (`capacity`, `generation`, `area`, `ratios`). There are no `unitCapacity` or `unitEnergy` fields. See [data pipeline](DATA_PIPELINE.md) for the complete nine-file inventory and deterministic publication rules. Missing annual generation remains numeric null, not zero.
 
 ## Validation / invariants
 - Sum `total_buildings` across district summaries = 1,747,249.
@@ -137,8 +125,8 @@ Data-only types live in `src/types/solar.ts`; `DATA_PIPELINE.md` documents the n
 
 Exact DKI, region-only, district-only and DKI type-only statistics are supported. Region × type and district × type require a new all-building-source aggregate (at most 308 district/type combinations) with all/eligible counts, capacity, covered generation, PVOUT counts and preferably available/missing MWp. Capacity-range statistics require additional aggregates. District/type summaries do not explicitly provide status-specific MWp. Do not estimate intersections from marginal proportions.
 
-## Required decisions before publication
-- Are both data boundary layers cleared and published with rights to redistribute?
-- Exact field schema, source layer names, geometry validity and actual contents of PMTiles.
-- Should annual GWh have explicit coverage footnote for every relevant visualization?
-- Are administrative names enough, or should we add stable codes for accurate joins?
+## Verification boundary
+
+Deployment is recorded in [DEPLOYMENT.md](DEPLOYMENT.md). Actual schemas, source-layer names, stable administrative codes and export arithmetic are established; the repaired archive has separate source/payload/browser evidence in [ARCHIVE_REPAIR_REPORT.md](ARCHIVE_REPAIR_REPORT.md). Coverage labels and unavailable values follow the approved UI.
+
+Original solar-model certification, full geometry topology/spatial assignment, source vintage and redistribution rights remain separate checks. The existing publication metadata explicitly records this boundary and must not be rewritten merely because the frontend is deployed.

@@ -1,5 +1,7 @@
 # Technical QA and production-readiness assessment
 
+> Historical post-UAT technical assessment. Its then-pending hosting status has been superseded by deployment; benchmark limitations still apply. For current setup/deployment and the latest checks, use [README](../README.md), [deployment](DEPLOYMENT.md) and [repository review](PROJECT_REVIEW.md).
+
 Date: 2026-10-26. Manual functional UAT is approved by the user. This follow-up did **not** replay the full functional UAT or redesign the interface.
 
 ## Assessment
