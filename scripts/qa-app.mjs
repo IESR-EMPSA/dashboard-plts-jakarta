@@ -9,18 +9,36 @@ import { messages } from '../src/i18n/messages.ts'
 import { BUILDING_ARCHIVE } from '../src/map/buildingArchive.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const chartNavigationOnly = process.argv.includes('--chart-navigation-only')
+const mapFramingOnly = process.argv.includes('--map-framing-only')
+const opacityResponseOnly = process.argv.includes('--opacity-response-only')
+const opacityBaseline = process.argv.includes('--opacity-baseline')
+const layerControlsOnly = process.argv.includes('--layer-controls-only') || opacityResponseOnly
+const isolatedUi = chartNavigationOnly || mapFramingOnly || layerControlsOnly
 const zoomOnly = process.argv.includes('--archive-zooms-only')
 const archiveUpdate = process.argv.includes('--archive-update') || zoomOnly
-const qaRelative = zoomOnly ? 'data/processed/qa/archive-z13-18/browser-native-zooms' : archiveUpdate ? 'data/processed/qa/archive-z13-18/browser' : 'data/processed/qa/chart-refinement'
+const qaRelative = layerControlsOnly ? 'data/processed/qa/layer-controls' : mapFramingOnly ? 'data/processed/qa/map-framing' : chartNavigationOnly ? 'data/processed/qa/chart-toolbar' : zoomOnly ? 'data/processed/qa/archive-z13-18/browser-native-zooms' : archiveUpdate ? 'data/processed/qa/archive-z13-18/browser' : 'data/processed/qa/chart-refinement'
 const archiveBytes = (await stat(resolve(root, BUILDING_ARCHIVE.localFile))).size
-const qa = resolve(root, qaRelative)
+const qa = resolve(root, opacityResponseOnly ? `data/processed/qa/opacity-response${opacityBaseline ? '-before' : '-after'}` : qaRelative)
 await mkdir(qa, { recursive: true })
 const profile = resolve(qa, `chrome-profile-${process.pid}`)
 assert(profile.startsWith(qa + sep))
+// Isolate focused UI verification from ISP/R2 DNS availability. This applies only
+// to the QA process/server; the user's port 5173 and .env.local remain unchanged.
+let chartServer
+let appUrl = 'http://localhost:5173/'
+if (isolatedUi) {
+  process.env.VITE_BUILDINGS_PMTILES_URL = ''
+  const { createServer } = await import('vite')
+  chartServer = await createServer({ cacheDir: resolve(qa, 'vite-cache'), server: { port: layerControlsOnly ? 5175 : 5174, strictPort: true, open: false }, clearScreen: false })
+  await chartServer.listen()
+  appUrl = chartServer.resolvedUrls.local[0]
+}
 const chrome = process.env.CHROME_PATH || resolve(process.env.LOCALAPPDATA, 'Google/Chrome/Application/chrome.exe')
 await access(chrome)
 const browser = spawn(chrome, ['--headless=new', '--no-first-run', '--no-default-browser-check',
   '--disable-background-networking', '--disable-component-update', '--disable-sync',
+  ...(isolatedUi ? ['--disable-features=AsyncDns'] : []),
   '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--remote-debugging-port=0',
   `--user-data-dir=${profile}`, '--window-size=1440,1100', 'about:blank'],
 { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
@@ -37,6 +55,9 @@ const admin = JSON.parse(await readFile(resolve(root, 'public/data/admin_kabkot.
 const positions = admin.features.flatMap(f => f.geometry.coordinates.flat(2))
 const fullBounds = [[Math.min(...positions.map(p=>p[0])),Math.min(...positions.map(p=>p[1]))],
   [Math.max(...positions.map(p=>p[0])),Math.max(...positions.map(p=>p[1]))]]
+const mainlandPositions = admin.features.filter(f=>f.properties.wilayah!=='Kepulauan Seribu').flatMap(f=>f.geometry.coordinates.flat(2))
+const mainlandBounds = [[Math.min(...mainlandPositions.map(p=>p[0])),Math.min(...mainlandPositions.map(p=>p[1]))],
+  [Math.max(...mainlandPositions.map(p=>p[0])),Math.max(...mainlandPositions.map(p=>p[1]))]]
 const imageryResponses = []
 const fmt = (n, digits = 2, locale = 'id') => n === null ? locale === 'id' ? 'Tidak tersedia' : 'Unavailable' : new Intl.NumberFormat(locale === 'id' ? 'id-ID' : 'en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)
 const expectedKpis = (row, locale = 'id') => [fmt(row.eligible_buildings, 0, locale), fmt(row.capacity_mwp / 1000, 2, locale), fmt(row.annual_gwh === null ? null : row.annual_gwh / 1000, 2, locale), fmt(row.eligibility_rate === null ? null : row.eligibility_rate * 100, 2, locale)]
@@ -73,14 +94,105 @@ async function navigateSample(kind) {
   await evaluate(`void window.__SOLAR_MAP__.jumpTo({center:${JSON.stringify(center)},zoom:16.3,padding:0,bearing:0,pitch:0})`)
 }
 async function checkFullExtent(label) {
-  const result = await evaluate(`(()=>{const m=window.__SOLAR_MAP__,b=${JSON.stringify(fullBounds)},r=m.getCanvas().getBoundingClientRect();return {bounds:m.getBounds().toArray(),zoom:m.getZoom(),fits:[[b[0][0],b[0][1]],[b[0][0],b[1][1]],[b[1][0],b[0][1]],[b[1][0],b[1][1]]].every(c=>{const p=m.project(c);return p.x>=16&&p.y>=16&&p.x<=r.width-16&&p.y<=r.height-16})}})()`)
-  assert(result.fits, `${label}: all six administrative regions must fit, including north and south extremes`)
+  return checkFittedExtent(label, fullBounds, 24)
+}
+async function checkOpeningExtent(label) {
+  const padding = await evaluate(`(()=>{const c=window.__SOLAR_MAP__.getCanvas();return Math.round(Math.min(c.clientWidth,c.clientHeight)*0.1)})()`)
+  return checkFittedExtent(label, mainlandBounds, padding)
+}
+async function checkFittedExtent(label, bounds, padding) {
+  const result = await evaluate(`(()=>{const m=window.__SOLAR_MAP__,b=${JSON.stringify(bounds)},r=m.getCanvas().getBoundingClientRect(),points=[[b[0][0],b[0][1]],[b[0][0],b[1][1]],[b[1][0],b[0][1]],[b[1][0],b[1][1]]].map(c=>m.project(c)),insets={left:Math.min(...points.map(p=>p.x)),right:r.width-Math.max(...points.map(p=>p.x)),top:Math.min(...points.map(p=>p.y)),bottom:r.height-Math.max(...points.map(p=>p.y))};return {bounds:m.getBounds().toArray(),zoom:m.getZoom(),insets,fits:Object.values(insets).every(v=>v>=${padding}-0.75)}})()`)
+  assert(result.fits, `${label}: all target geometry must fit inside the small padding`)
+  const {left,right,top,bottom} = result.insets
+  assert(Math.abs(left-right)<1 && Math.abs(top-bottom)<1, `${label}: bounds centered with symmetric padding`)
+  assert(Math.abs(Math.min(left,right,top,bottom)-padding)<1, `${label}: tightest fitting extent without extra zoom-out`)
+  return result
+}
+async function checkMapOverlays(label) {
+  const result = await evaluate(`(()=>{const box=e=>{const r=e.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom}},viewport=box(document.querySelector('.map-viewport')),legend=box(document.querySelector('.map-legend')),status=box(document.querySelector('.map-instructions')),attribution=box(document.querySelector('.maplibregl-ctrl-attrib'));return {width:innerWidth,left:legend.left-viewport.left,bottom:viewport.bottom-status.bottom,gap:status.top-legend.bottom,visible:legend.top>=viewport.top&&status.right<=viewport.right,attributionClear:status.right<=attribution.left||status.bottom<=attribution.top,overflow:document.documentElement.scrollWidth>innerWidth,attributionGap:attribution.top-status.bottom}})()`)
+  assert(Math.abs(result.left-8)<0.5 && Math.abs(result.gap-6)<0.5, `${label}: compact left inset and stack gap`)
+  assert(result.visible && result.attributionClear && !result.overflow, `${label}: panels fit and leave attribution visible`)
+  assert(Math.abs(result.bottom-8)<0.5 || Math.abs(result.attributionGap-6)<0.5, `${label}: smallest bottom inset that clears attribution`)
+  return result
+}
+async function checkMapFraming() {
+  checks.openingMainlandExtent = await checkOpeningExtent('Opening mainland')
+  await screenshot('01-opening-mainland')
+  const sizes = [[1920,1080],[1440,900],[1366,768],[1280,600],[768,1024],[390,844],[320,740]]
+  checks.openingLayouts = []
+  checks.workspaceHeight = []
+  for (const [width,height] of sizes) {
+    await command('Emulation.setDeviceMetricsOverride', {width,height,deviceScaleFactor:1,mobile:width<540})
+    await pause(250)
+    await evaluate(`document.querySelector('.map-panel').scrollIntoView({block:'start'})`)
+    for (const locale of ['id','en']) {
+      await setLanguage(locale)
+      checks.openingLayouts.push({width,height,locale,extent:await checkOpeningExtent('Resized opening'),overlays:await checkMapOverlays('Opening overlays')})
+      checks.workspaceHeight.push({locale,...await checkWorkspaceHeight()})
+    }
+    if (width===1440 || width===390) await screenshot(`opening-${width}`)
+  }
+  await mouseClick('[data-testid="map-extent"]')
+  await pause(100)
+  checks.fullDkiLayouts = []
+  for (const [width,height] of sizes) {
+    await command('Emulation.setDeviceMetricsOverride', {width,height,deviceScaleFactor:1,mobile:width<540})
+    await pause(250)
+    await evaluate(`document.querySelector('.map-panel').scrollIntoView({block:'start'})`)
+    checks.fullDkiLayouts.push({width,height,extent:await checkFullExtent('Full DKI'),overlays:await checkMapOverlays('Full DKI overlays')})
+    if (width===1440 || width===390) await screenshot(`full-dki-${width}`)
+  }
+  await command('Emulation.setDeviceMetricsOverride', {width:1440,height:900,deviceScaleFactor:1,mobile:false})
+  await evaluate(`window.scrollTo(0,0)`)
+  await pause(250)
+  await mouseClick('.maplibregl-ctrl-fullscreen')
+  await waitFor(`!!document.fullscreenElement`, 'fullscreen')
+  await pause(250)
+  checks.fullscreenExtent = await checkFullExtent('Fullscreen DKI')
+  await checkMapOverlays('Fullscreen overlays')
+  await screenshot('fullscreen-dki')
+  await mouseClick('.maplibregl-ctrl-shrink')
+  await waitFor(`!document.fullscreenElement`, 'exit fullscreen')
+  await pause(250)
+  checks.afterFullscreenExtent = await checkFullExtent('DKI after fullscreen')
+  // A real navigation control must turn off automatic fitting on later resizes.
+  await mouseClick('.maplibregl-ctrl-zoom-in')
+  await pause(100)
+  const camera = await evaluate(`({center:window.__SOLAR_MAP__.getCenter().toArray(),zoom:window.__SOLAR_MAP__.getZoom()})`)
+  await command('Emulation.setDeviceMetricsOverride', {width:1366,height:768,deviceScaleFactor:1,mobile:false})
+  await pause(250)
+  const resizedCamera = await evaluate(`({center:window.__SOLAR_MAP__.getCenter().toArray(),zoom:window.__SOLAR_MAP__.getZoom()})`)
+  assert.deepEqual(resizedCamera,camera,'Manual navigation preserved on resize')
+  checks.manualCameraPreserved = true
+  const region = regions.regions.find(r=>r.wilayah==='Jakarta Selatan')
+  await choose('region-filter',region.id)
+  await pause(100)
+  const beforeExtent = await kpiValues()
+  await mouseClick('[data-testid="map-extent"]')
+  await pause(100)
+  await checkFullExtent('DKI with region selected')
+  assert.equal(await evaluate(`document.querySelector('[data-testid="region-filter"]').value`),region.id)
+  assert.deepEqual(await kpiValues(),beforeExtent,'Extent button preserves selected statistics')
+  checks.extentPreservesFilters = true
+}
+async function checkWorkspaceHeight() {
+  const result = await evaluate(`(()=>{const root=document.documentElement,property='--workspace-extra-height',previous=root.style.getPropertyValue(property),read=()=>{const m=document.querySelector('.map-panel').getBoundingClientRect(),sidebar=document.querySelector('.analysis-sidebar'),s=sidebar.getBoundingClientRect(),c=document.querySelector('.analytics-section').getBoundingClientRect(),coverage=document.querySelector('.coverage-card').getBoundingClientRect();return {map:m.height,sidebar:s.height,top:m.top,sidebarTop:s.top,chartTop:c.top,mapBottom:m.bottom,coverageBottom:coverage.bottom,sidebarScrollable:sidebar.scrollHeight>sidebar.clientHeight+1}},taller=read();root.style.setProperty(property,'0px');const baseline=read();if(previous)root.style.setProperty(property,previous);else root.style.removeProperty(property);return {width:innerWidth,height:innerHeight,taller,baseline,overflow:root.scrollWidth>innerWidth}})()`)
+  const extra = result.width > 860 ? 50 : 0
+  assert(Math.abs(result.taller.map-result.baseline.map-extra)<1,'Map receives exactly the desktop height increase')
+  assert(Math.abs(result.taller.sidebar-result.baseline.sidebar-extra)<1,'Sidebar receives the same height increase')
+  assert(Math.abs(result.taller.chartTop-result.baseline.chartTop-extra)<1,'Charts remain below the taller workspace')
+  if (extra) {
+    assert(Math.abs(result.taller.map-result.taller.sidebar)<1,'Map and sidebar heights remain aligned')
+    assert(Math.abs(result.taller.top-result.taller.sidebarTop)<1,'Map and sidebar top edges remain aligned')
+    if (!result.taller.sidebarScrollable) assert(Math.abs(result.taller.coverageBottom-result.taller.mapBottom)<1,'Visible sidebar card fills the taller workspace')
+  }
+  assert(!result.overflow,'Height adjustment causes no horizontal overflow')
   return result
 }
 async function checkMapFitsScreen(label) {
-  const layout = await evaluate(`(()=>{const r=document.querySelector('.map-panel').getBoundingClientRect(),h=document.querySelector('.app-header').getBoundingClientRect(),s=document.querySelector('.analysis-sidebar');return {width:innerWidth,height:innerHeight,mapTop:r.top,mapBottom:r.bottom,mapHeight:r.height,headerBottom:h.bottom,pageScroll:scrollY,sidebarHeight:s.clientHeight,sidebarContentHeight:s.scrollHeight}})()`)
+  const layout = await evaluate(`(()=>{const r=document.querySelector('.map-panel').getBoundingClientRect(),h=document.querySelector('.app-header').getBoundingClientRect(),s=document.querySelector('.analysis-sidebar');return {width:innerWidth,height:innerHeight,mapTop:r.top,mapBottom:r.bottom,mapHeight:r.height,headerBottom:h.bottom,pageScroll:scrollY,sidebarHeight:s.clientHeight,sidebarContentHeight:s.scrollHeight,extraHeight:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--workspace-extra-height'))||0}})()`)
   assert(layout.mapTop >= layout.headerBottom - 1, `${label}: map top must be below the header`)
-  assert(layout.mapBottom <= layout.height - 8, `${label}: map bottom must fit without page scrolling`)
+  assert(layout.mapBottom <= layout.height + layout.extraHeight - 8, `${label}: map bottom respects the approved extra desktop height`)
   return layout
 }
 async function checkIconCentered(selector) {
@@ -89,9 +201,257 @@ async function checkIconCentered(selector) {
   return alignment
 }
 async function mouseClick(selector) {
-  const point = await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});e.scrollIntoView({block:'nearest'});const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`)
+  const point = await evaluate(`(async()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('Missing click target');const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));e.scrollIntoView({block:'nearest',behavior:'instant'});await frame();let r=e.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;if(!e.contains(document.elementFromPoint(x,y))){e.scrollIntoView({block:'center',behavior:'instant'});await frame();r=e.getBoundingClientRect();x=r.left+r.width/2;y=r.top+r.height/2}if(!e.contains(document.elementFromPoint(x,y)))throw Error('Click target is covered: '+${JSON.stringify(selector)});return {x,y}})()`)
   await command('Input.dispatchMouseEvent', {type:'mousePressed',...point,button:'left',clickCount:1})
   await command('Input.dispatchMouseEvent', {type:'mouseReleased',...point,button:'left',clickCount:1})
+}
+async function measureOpacityResponse(slider, toggle) {
+  await mouseClick('.layer-menu > summary')
+  await mouseClick(toggle)
+  await waitFor(`window.__SOLAR_MAP__.loaded()`, 'settled map before opacity measurement')
+  const requestsBefore=ranges.length
+  await evaluate(`(() => {
+    const m=window.__SOLAR_MAP__,manager=m.style.tileManagers['solar-buildings'],reload=manager.reload;
+    const s=document.querySelector(${JSON.stringify(slider)}),initial=Number(s.value),inputs=[],frames=[];
+    let reloads=0,lastInput=null;
+    const input=()=>{lastInput=performance.now();inputs.push({value:Number(s.value),at:lastInput})};
+    const render=()=>{if(lastInput!==null){frames.push({value:Number(s.value),delayMs:performance.now()-lastInput,evaluatedOpacity:m.getLayer('solar-building-fill').paint.get('fill-layer-opacity')});lastInput=null}};
+    manager.reload=function(...args){reloads++;return reload.apply(this,args)};
+    s.addEventListener('input',input);m.on('render',render);
+    window.__OPACITY_QA__={started:performance.now(),finish:()=>{
+      manager.reload=reload;s.removeEventListener('input',input);m.off('render',render);
+      return {zoom:m.getZoom(),initial,final:Number(s.value),reloads,inputs,frames,sourceLoaded:m.isSourceLoaded('solar-buildings'),
+        paint:m.getPaintProperty('solar-building-fill','fill-layer-opacity')??m.getPaintProperty('solar-building-fill','fill-opacity'),
+        lastInputToSettledMs:inputs.length?performance.now()-inputs.at(-1).at:null,
+        elapsedMs:performance.now()-window.__OPACITY_QA__.started};
+    }};
+  })()`)
+  try {
+    const rect=await evaluate(`(()=>{const s=document.querySelector(${JSON.stringify(slider)}),r=s.getBoundingClientRect();return {left:r.left+8,width:r.width-16,y:r.top+r.height/2,value:Number(s.value)}})()`)
+    const point=value=>({x:rect.left+rect.width*value/100,y:rect.y})
+    await command('Input.dispatchMouseEvent',{type:'mouseMoved',...point(rect.value)})
+    await command('Input.dispatchMouseEvent',{type:'mousePressed',...point(rect.value),button:'left',buttons:1,clickCount:1})
+    for(const value of [80,60,40,20,0,20,40,60,80,100]) {
+      await command('Input.dispatchMouseEvent',{type:'mouseMoved',...point(value),button:'left',buttons:1})
+      await pause(35)
+    }
+    const whileHeld=await evaluate(`({value:Number(document.querySelector(${JSON.stringify(slider)}).value),paint:window.__SOLAR_MAP__.getPaintProperty('solar-building-fill','fill-layer-opacity')??window.__SOLAR_MAP__.getPaintProperty('solar-building-fill','fill-opacity'),evaluatedOpacity:window.__SOLAR_MAP__.getLayer('solar-building-fill').paint.get('fill-layer-opacity')})`)
+    await command('Input.dispatchMouseEvent',{type:'mouseReleased',...point(100),button:'left',clickCount:1})
+    await waitFor(`window.__SOLAR_MAP__.loaded()`, 'settled map after opacity drag')
+    const result=await evaluate(`window.__OPACITY_QA__.finish()`)
+    result.whileHeld=whileHeld
+    result.completedRangeResponsesDuringDrag=ranges.length-requestsBefore
+    assert(result.inputs.length>=8,'Drag emits continuous input before pointer release')
+    if(!opacityBaseline) {
+      assert.equal(result.reloads,0,'Opacity dragging must not reprocess vector tiles')
+      assert.equal(whileHeld.paint,whileHeld.value/100,'Paint must follow input while pointer remains pressed')
+      assert.equal(whileHeld.evaluatedOpacity,whileHeld.value/100,'Rendered paint must update before pointer release')
+      assert(result.frames.length>=8&&result.frames.every(f=>Math.abs(f.evaluatedOpacity-f.value/100)<1e-9),'Rendered frames follow continuous input without a delayed transition')
+      assert.equal(result.completedRangeResponsesDuringDrag,0,'Dragging does not fetch building tiles')
+    }
+    checks.opacityResponses??=[]
+    checks.opacityResponses.push(result)
+    console.log(JSON.stringify({progress:'opacity-response',baseline:opacityBaseline,...result}))
+  } finally {
+    await evaluate(`window.__OPACITY_QA__?.finish();delete window.__OPACITY_QA__`)
+    await mouseClick('[data-testid="layer-close"]')
+  }
+}
+async function checkLayerControls() {
+  const slider='[data-testid="building-opacity"]',toggle='[data-testid="opacity-toggle"]'
+  const isExpanded=()=>evaluate(`document.querySelector(${JSON.stringify(toggle)}).getAttribute('aria-expanded')==='true'`)
+  const fill=()=>evaluate(`window.__SOLAR_MAP__.getPaintProperty('solar-building-fill','fill-layer-opacity')`)
+  async function key(name,code){await command('Input.dispatchKeyEvent',{type:'keyDown',key:name,code:name,windowsVirtualKeyCode:code});await command('Input.dispatchKeyEvent',{type:'keyUp',key:name,code:name,windowsVirtualKeyCode:code})}
+  checks.brandingAssets=await evaluate(`(async()=>{
+    const logo=document.querySelector('.brand-logo'),icon=document.querySelector('link[rel="icon"]');
+    await logo.decode();const favicon=new Image();favicon.src=icon.href;await favicon.decode();
+    return {logoWidth:logo.naturalWidth,logoHeight:logo.naturalHeight,logoLocal:new URL(logo.src).origin===location.origin,
+      organization:document.querySelector('.brand-name').firstChild.textContent.trim(),project:document.querySelector('.brand-name>span').textContent.trim(),
+      faviconLocal:new URL(icon.href).origin===location.origin,faviconSvg:icon.type==='image/svg+xml',faviconDecoded:favicon.naturalWidth>0};
+  })()`)
+  assert.deepEqual(checks.brandingAssets,{logoWidth:6271,logoHeight:3168,logoLocal:true,organization:'IESR',project:'JAKARTA SOLAR EXPLORER',faviconLocal:true,faviconSvg:true,faviconDecoded:true})
+  await navigateSample('urban')
+  // A camera change can briefly report the previous view as loaded. Wait for
+  // actual rendered buildings in the same bounded area as the inspection UI.
+  await waitFor(`(()=>{const m=window.__SOLAR_MAP__,c=m.getCanvas(),x=c.clientWidth/2,y=c.clientHeight/2;return m.isSourceLoaded('solar-buildings')&&!m.isMoving()&&m.queryRenderedFeatures([[x-100,y-100],[x+100,y+100]],{layers:['solar-building-fill']}).length>0})()`,'rendered urban tiles for opacity')
+  if(opacityResponseOnly) {
+    // Compare the original urban view first, then exercise dense native z13 and
+    // detailed z18. All navigation/loading happens outside the drag measurement.
+    for(const targetZoom of opacityBaseline?[16.3]:[16.3,13.3,18.3]) {
+      await evaluate(`void window.__SOLAR_MAP__.jumpTo({zoom:${targetZoom}})`)
+      await pause(250)
+      await waitFor(`window.__SOLAR_MAP__.loaded()`, `loaded opacity view at ${targetZoom}`)
+      await measureOpacityResponse(slider,toggle)
+    }
+    return
+  }
+  const beforeKpis=await kpiValues(),beforeFilter=await evaluate(`window.__SOLAR_MAP__.getFilter('solar-building-fill')`)
+  const beforeOutline=await evaluate(`window.__SOLAR_MAP__.getPaintProperty('solar-building-outline','line-opacity')`)
+  checks.layerControls=[]
+  for(const locale of ['id','en']) {
+    await setLanguage(locale)
+    await mouseClick('.layer-menu > summary')
+    assert(await evaluate(`document.querySelector('.layer-menu').open`))
+    assert.equal(await isExpanded(),false,'Enabling buildings must not auto-expand opacity controls')
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(toggle)}).getAttribute('aria-label')`),messages['map.adjustOpacity'][locale])
+    await mouseClick(toggle);assert(await isExpanded())
+    if(locale==='id')assert.equal(await evaluate(`document.querySelector(${JSON.stringify(slider)}).value`),'80')
+    const fixedPaint=await evaluate(`({base:window.__SOLAR_MAP__.getPaintProperty('solar-building-fill','fill-opacity'),highlight:window.__SOLAR_MAP__.getPaintProperty('solar-building-highlight','fill-opacity')})`)
+    assert.equal(fixedPaint.highlight[2],0.9,'Selected/hover highlight keeps the original opacity')
+    assert.equal(fixedPaint.base[2],0,'Selected/hovered buildings are not painted twice')
+    assert.deepEqual(await evaluate(`window.__SOLAR_MAP__.getPaintProperty('solar-building-fill','fill-layer-opacity-transition')`),{duration:0,delay:0})
+    await mouseClick(slider)
+    for(const [name,code,value] of [['End',35,100],['Home',36,0],['ArrowRight',39,5]]) {
+      await key(name,code)
+      assert.equal(await evaluate(`Number(document.querySelector(${JSON.stringify(slider)}).value)`),value)
+      const paint=await fill();assert(Math.abs(paint-value/100)<1e-9)
+      assert.deepEqual(await evaluate(`({base:window.__SOLAR_MAP__.getPaintProperty('solar-building-fill','fill-opacity'),highlight:window.__SOLAR_MAP__.getPaintProperty('solar-building-highlight','fill-opacity')})`),fixedPaint,'Dragging changes only constant layer paint')
+      assert.equal(await evaluate(`document.querySelector(${JSON.stringify(slider)}).getAttribute('aria-valuetext')`),messages['map.opacityValue'][locale].replace('{value}',String(value)))
+    }
+    // Real building inspection still works after changing opacity.
+    await mouseClick('[data-testid="layer-close"]')
+    assert.equal(await evaluate(`document.activeElement?.matches('.layer-menu > summary')`),true)
+    await waitFor(`(()=>{const m=window.__SOLAR_MAP__,c=m.getCanvas(),x=c.clientWidth/2,y=c.clientHeight/2;return m.isSourceLoaded('solar-buildings')&&m.queryRenderedFeatures([[x-100,y-100],[x+100,y+100]],{layers:['solar-building-fill']}).length>0})()`,'rendered inspection target after paint change')
+    await mouseClick('[data-testid="inspect-center"]')
+    await waitFor(`!!document.querySelector('[data-testid="building-details"]')`,'actual building inspection with opacity')
+    const inspectedId=await evaluate(`document.querySelector('[data-testid="building-id"]').textContent`)
+    assert.equal(await evaluate(`window.__SOLAR_MAP__.getFeatureState({source:'solar-buildings',sourceLayer:'buildings_eligible_pvout',id:${JSON.stringify(inspectedId)}}).selected`),true)
+    await screenshot(`opacity-inspection-${locale}`)
+    await mouseClick('.building-details header button')
+    await mouseClick('.layer-menu > summary');assert.equal(await isExpanded(),false)
+    await mouseClick(toggle)
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(slider)}).value`),'5','Closing the layer popup preserves the value')
+    await mouseClick(toggle);assert.equal(await isExpanded(),false)
+    await mouseClick(toggle);assert(await isExpanded())
+    await mouseClick('[data-testid="buildings-visible"]')
+    assert.equal(await isExpanded(),false)
+    assert.deepEqual(await evaluate(`['solar-building-fill','solar-building-highlight','solar-building-outline'].map(id=>window.__SOLAR_MAP__.getLayoutProperty(id,'visibility'))`),['none','none','none'])
+    assert(await evaluate(`document.querySelector(${JSON.stringify(toggle)}).disabled`))
+    await mouseClick('[data-testid="buildings-visible"]');assert.equal(await isExpanded(),false)
+    await mouseClick(toggle)
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(slider)}).value`),'5')
+    const menuState=await evaluate(`({checks:[...document.querySelectorAll('.layer-popover input[type="checkbox"]')].map(e=>e.checked),basemap:document.querySelector('[data-testid="basemap-openfreemap"]').getAttribute('aria-pressed')})`)
+    await mouseClick('[data-testid="basemap-google"]')
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(slider)}).value`),'5')
+    await mouseClick('[data-testid="basemap-openfreemap"]')
+    assert.deepEqual(await evaluate(`({checks:[...document.querySelectorAll('.layer-popover input[type="checkbox"]')].map(e=>e.checked),basemap:document.querySelector('[data-testid="basemap-openfreemap"]').getAttribute('aria-pressed')})`),menuState)
+    const layouts=[]
+    for(const width of [1440,390,320]) {
+      await command('Emulation.setDeviceMetricsOverride',{width,height:1100,deviceScaleFactor:1,mobile:width<500})
+      await evaluate(`document.querySelector('.map-panel-header').scrollIntoView({block:'center'})`);await pause(150)
+      const bounds=await evaluate(`(()=>{const r=document.querySelector('.layer-popover').getBoundingClientRect(),s=document.querySelector(${JSON.stringify(slider)}).getBoundingClientRect(),h=document.querySelector('.app-header').getBoundingClientRect(),b=document.querySelector('.brand').getBoundingClientRect(),l=document.querySelector('.brand-logo').getBoundingClientRect(),a=document.querySelector('.header-actions').getBoundingClientRect();return {width:innerWidth,fits:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,sliderFits:s.left>=r.left&&s.right<=r.right,overflow:document.documentElement.scrollWidth>innerWidth,brandFits:b.left>=0&&b.right<a.left&&l.top>=h.top&&l.bottom<=h.bottom,logoProportions:Math.abs(l.width-l.height)<0.01&&getComputedStyle(document.querySelector('.brand-logo')).objectFit==='cover'&&getComputedStyle(document.querySelector('.brand-logo')).objectPosition==='0% 50%',brandTextVisible:document.querySelector('.brand-name>span').getBoundingClientRect().width>0}})()`)
+      assert(bounds.fits&&bounds.sliderFits&&!bounds.overflow&&bounds.brandFits&&bounds.logoProportions&&bounds.brandTextVisible,JSON.stringify(bounds));layouts.push(bounds)
+      await screenshot(`opacity-${locale}-${width}`)
+    }
+    await command('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false})
+    await evaluate(`document.querySelector('[data-testid="building-opacity"]').focus()`)
+    await key('Escape',27)
+    assert.equal(await evaluate(`document.querySelector('.layer-menu').open`),false)
+    assert.equal(await evaluate(`document.activeElement?.matches('.layer-menu > summary')`),true)
+    checks.layerControls.push({locale,keyboardRangeAndEsc:true,collapsedByDefault:true,valueRetained:true,disabledWithLayer:true,realBuildingDetail:true,inspectedId,layouts})
+    console.log(JSON.stringify({progress:'layer-controls',locale,passed:true}))
+  }
+  await setLanguage('id')
+  assert.deepEqual(await kpiValues(),beforeKpis)
+  assert.deepEqual(await evaluate(`window.__SOLAR_MAP__.getFilter('solar-building-fill')`),beforeFilter)
+  assert.equal(await evaluate(`window.__SOLAR_MAP__.getPaintProperty('solar-building-outline','line-opacity')`),beforeOutline)
+  assert.deepEqual(await evaluate(`window.__SOLAR_MAP__.getFilter('solar-building-highlight')`),beforeFilter)
+  checks.opacityDoesNotChangeStatisticsFiltersOrOutline=true
+}
+async function checkChartNavigation() {
+  // Focused UI regression only; keep tile loading out of the chart interaction cases.
+  await evaluate(`(()=>{const e=document.querySelector('.layer-popover input');if(e.checked)e.click()})()`)
+  const region = [...regions.regions].sort((a,b)=>(b.annual_gwh??-1)-(a.annual_gwh??-1))[0]
+  const district = districts.districts.filter(d=>d.region_id===region.id).sort((a,b)=>(b.annual_gwh??-1)-(a.annual_gwh??-1))[0]
+  const selected = () => evaluate(`['region-filter','district-filter','type-filter'].map(id=>document.querySelector('[data-testid="'+id+'"]').value)`)
+  const assertEnergy = async () => assert.equal(await evaluate(`document.querySelector('[data-testid="generation-chart-tab"]').getAttribute('aria-pressed')`),'true')
+  const chartDimensions = () => evaluate(`(()=>{const c=document.querySelector('.region-chart'),r=c.getBoundingClientRect(),toolbar=c.querySelector('.comparison-toolbar').getBoundingClientRect(),first=c.querySelector('.chart-row').getBoundingClientRect();return {height:r.height,toolbarHeight:toolbar.height,firstRowOffset:first.top-r.top}})()`)
+  const checkMethodology = async locale => {
+    await mouseClick('.header-actions > .button')
+    assert(await evaluate(`document.querySelector('.methodology-dialog').open`))
+    const text=await evaluate(`document.querySelector('.methodology-content').textContent`)
+    for(const key of ['method.lead','method.energyText','method.nulls'])assert(text.includes(messages[key][locale]),`Relocated ${key} remains in ${locale} methodology`)
+    const dialog=await evaluate(`(()=>{const d=document.querySelector('.methodology-dialog'),r=d.getBoundingClientRect();return {fits:r.left>=0&&r.right<=innerWidth,overflow:d.scrollWidth>d.clientWidth+1}})()`)
+    assert(dialog.fits&&!dialog.overflow)
+    await screenshot(`methodology-${locale}-${await evaluate('innerWidth')}`)
+    await mouseClick('.methodology-dialog header button')
+    assert.equal(await evaluate(`document.querySelector('.methodology-dialog').open`),false)
+  }
+  checks.chartNavigation = []
+  for (const locale of ['id','en']) {
+    await setLanguage(locale);await choose('region-filter','');await choose('type-filter','')
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('.comparison-navigation button')].map(b=>b.disabled)`),[true,true])
+    assert.equal(await evaluate(`!!document.querySelector('.research-note,.generation-caption')`),false)
+    assert((await evaluate(`document.querySelector('[data-testid="kpi-generation"] p').textContent`)).includes(messages['kpi.generationNote'][locale]))
+    await checkMethodology(locale)
+    await mouseClick('[data-testid="generation-chart-tab"]')
+    await mouseClick('.region-chart .chart-row')
+    assert.deepEqual(await selected(),[region.id,'',''])
+    assert.deepEqual(await kpiValues(),expectedKpis(region,locale))
+    assert.equal(await evaluate(`document.querySelector('[data-testid="chart-back"]').textContent.trim()`),messages['chart.back'][locale])
+    assert.equal(await evaluate(`document.querySelector('[data-testid="chart-reset-area"]').disabled`),false)
+    const parentDimensions=await chartDimensions()
+    await mouseClick('.region-chart .chart-row')
+    assert.deepEqual(await selected(),[region.id,district.id,''])
+    assert.deepEqual(await kpiValues(),expectedKpis(district,locale))
+    const selectedDimensions=await chartDimensions()
+    for(const key of ['height','toolbarHeight','firstRowOffset'])assert(Math.abs(parentDimensions[key]-selectedDimensions[key])<1,`${locale}: district selection must not add a control row or change card height`)
+    assert.equal(await evaluate(`document.querySelector('.region-chart .selected-row').getAttribute('aria-pressed')`),'true')
+    assert.equal(await evaluate(`document.querySelector('[data-testid="chart-reset-area"]').textContent.trim()`),messages['chart.resetArea'][locale])
+    await mouseClick('[data-testid="chart-back"]')
+    assert.deepEqual(await selected(),[region.id,'','']);await assertEnergy()
+    assert.deepEqual(await kpiValues(),expectedKpis(region,locale))
+    assert.equal(await evaluate(`document.activeElement?.dataset.testid`),'chart-back')
+    // The retained Back button can be activated a second time from the keyboard.
+    await command('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13})
+    await command('Input.dispatchKeyEvent',{type:'char',text:'\r',unmodifiedText:'\r',key:'Enter',code:'Enter',windowsVirtualKeyCode:13})
+    await command('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13})
+    await waitFor(`document.querySelector('[data-testid="region-filter"]').value===''`,'Back to DKI')
+    assert.deepEqual(await selected(),['','','']);await assertEnergy()
+    assert.deepEqual(await kpiValues(),expectedKpis(regions.overall,locale))
+    assert.equal(await evaluate(`document.activeElement?.matches('.region-chart .chart-row')`),true,'Focus returns to the chart when navigation becomes disabled')
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('.comparison-navigation button')].map(b=>b.disabled)`),[true,true])
+    await mouseClick('.region-chart .chart-row');await mouseClick('.region-chart .chart-row')
+    checks.chartNavigation.push({locale,layouts:[]})
+    for (const width of [1920,1440,1024,768,390,320]) {
+      await command('Emulation.setDeviceMetricsOverride',{width,height:1100,deviceScaleFactor:1,mobile:width<500})
+      await pause(100)
+      const layout=await evaluate(`(()=>{const c=document.querySelector('.region-chart'),r=c.getBoundingClientRect(),toolbar=c.querySelector('.comparison-toolbar').getBoundingClientRect(),metric=c.querySelector('.chart-tabs').getBoundingClientRect();return {width:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth,toolbarHeight:toolbar.height,buttons:[...c.querySelectorAll('.comparison-navigation button')].map(b=>{const p=b.getBoundingClientRect();return {text:b.getAttribute('aria-label'),fits:p.left>=r.left&&p.right<=r.right&&p.top>=toolbar.top&&p.bottom<=toolbar.bottom&&p.left>=metric.right,height:p.height}})}})()`)
+      assert(!layout.overflow);assert(layout.buttons.every(b=>b.fits&&b.height>=32));assert(layout.toolbarHeight<=38,'Toolbar stays on one line')
+      const withDistrict=await chartDimensions()
+      await choose('district-filter','')
+      const withoutDistrict=await chartDimensions()
+      for(const key of ['height','toolbarHeight','firstRowOffset'])assert(Math.abs(withDistrict[key]-withoutDistrict[key])<1,`${locale} ${width}px: Back/reset state must not shift the chart`)
+      await choose('district-filter',district.id)
+      checks.chartNavigation.at(-1).layouts.push(layout)
+      if(width===1920||width===1440||width===320)await screenshotCharts(`chart-navigation-${locale}-${width}`)
+      if(width===320)await checkMethodology(locale)
+    }
+    await command('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false})
+    await mouseClick('[data-testid="chart-reset-area"]')
+    assert.deepEqual(await selected(),['','','']);await assertEnergy()
+    assert.deepEqual(await kpiValues(),expectedKpis(regions.overall,locale))
+    assert.equal(await evaluate(`document.activeElement?.matches('.region-chart .chart-row')`),true)
+    // Reset area must preserve the unrelated type filter and its exact DKI aggregate.
+    const type=types.types[0]
+    await choose('type-filter',type.id)
+    await mouseClick('.region-chart .chart-row');await mouseClick('.region-chart .chart-row')
+    assert.deepEqual(await selected(),[region.id,district.id,type.id])
+    assert(await evaluate(`!!document.querySelector('.unsupported-notice')`))
+    await mouseClick('[data-testid="chart-reset-area"]')
+    assert.deepEqual(await selected(),['','',type.id]);await assertEnergy()
+    assert.deepEqual(await kpiValues(),expectedKpis(type,locale))
+    await choose('type-filter','')
+    const nullDistrict=districts.districts.find(d=>d.annual_gwh===null)
+    await choose('region-filter',nullDistrict.region_id);await choose('district-filter',nullDistrict.id)
+    assert.deepEqual(await kpiValues(),expectedKpis(nullDistrict,locale))
+    await mouseClick('[data-testid="chart-back"]')
+    assert.deepEqual(await selected(),[nullDistrict.region_id,'',''])
+    await mouseClick('[data-testid="chart-back"]')
+    assert.deepEqual(await selected(),['','',''])
+    Object.assign(checks.chartNavigation.at(-1),{realChartClicks:true,backAndDirectReset:true,metricAndTypePreserved:true,nullEnergyPreserved:true,keyboardAndFocus:true,stableToolbarAndCardHeight:true,explanationsMovedToMethodology:true})
+    console.log(JSON.stringify({progress:'chart-navigation',locale,passed:true}))
+  }
 }
 async function waitFor(expression, label, timeout = 45000) {
   const end = Date.now() + timeout
@@ -252,8 +612,15 @@ try {
   await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
   await command('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
   const browserVersion = await command('Browser.getVersion')
-  console.log(JSON.stringify({ progress: 'navigate', result: await command('Page.navigate', { url: 'http://localhost:5173/' }) }))
+  console.log(JSON.stringify({ progress: 'navigate', url: appUrl, result: await command('Page.navigate', { url: appUrl }) }))
   await waitFor('!!window.__SOLAR_MAP__', 'Vue / MapLibre initialization')
+  if (layerControlsOnly) {
+    await checkLayerControls()
+  } else if (chartNavigationOnly) {
+    await checkChartNavigation()
+  } else if (mapFramingOnly) {
+    await checkMapFraming()
+  } else {
   checks.devLoadTiming = await evaluate(`(()=>{const n=performance.getEntriesByType('navigation')[0];return {domContentLoadedMs:Math.round(n.domContentLoadedEventEnd),firstContentfulPaintMs:Math.round(performance.getEntriesByName('first-contentful-paint')[0]?.startTime??0),mapReadyMs:Math.round(performance.now())}})()`)
   await pause(2000)
   checks.initial = await evaluate(`({title:document.title,kpis:[...document.querySelectorAll('.kpi-number strong')].map(e=>e.textContent),mapError:document.querySelector('.map-error')?.textContent,baseFallback:!!document.querySelector('.basemap-notice'),charts:document.querySelectorAll('.chart-card').length})`)
@@ -261,7 +628,7 @@ try {
   assert.equal(checks.initial.mapError, undefined); assert.equal(checks.initial.charts, 3)
   await screenshot('01-overview')
   console.log(JSON.stringify({ progress: 'initial', ...checks.initial }))
-  checks.initialFullDkiExtent = await checkFullExtent('Initial extent')
+  checks.initialMainlandExtent = await checkOpeningExtent('Initial extent')
   checks.initialSummaryLayout = await checkSummaryCardLayout('Initial DKI summary cards')
   assert(await evaluate(`!document.querySelector('.model-badge')`), 'Modeled-data badge removed')
   await setLanguage('en')
@@ -277,7 +644,7 @@ try {
   const brokenLabels = await evaluate(`[...document.querySelectorAll('[aria-labelledby]')].flatMap(e=>e.getAttribute('aria-labelledby').split(/\\s+/).filter(id=>!document.getElementById(id)))`)
   assert.deepEqual(brokenLabels, [], 'Accessible labels must reference existing elements')
   checks.accessibleLabelReferences = true
-  assert(await evaluate(`!document.querySelector('.example-locations,.scope-row,.technical-caption,.closing-note,.app-footer .text-button')`))
+  assert(await evaluate(`!document.querySelector('.example-locations,.scope-row,.technical-caption,.closing-note,.app-footer .text-button,.research-note,.generation-caption')`))
   assert(!(await evaluate(`document.querySelector('main').innerText`)).includes('RISET ENERGI'))
   checks.requestedElementsRemoved = true
   checks.iconAlignment = { extent: await checkIconCentered('[data-testid="map-extent"]') }
@@ -286,11 +653,11 @@ try {
     await command('Emulation.setDeviceMetricsOverride', {width,height,deviceScaleFactor:1,mobile:false})
     await evaluate(`window.scrollTo(0,0)`); await pause(300)
     checks.viewportLayouts.push(await checkMapFitsScreen(`${width} × ${height}`))
-    await checkFullExtent(`${width} × ${height} extent`)
+    await checkOpeningExtent(`${width} × ${height} extent`)
     if (width===1366) await screenshot('12-laptop-map-without-page-scroll')
     await setLanguage('en')
     await checkMapFitsScreen(`English ${width} × ${height}`)
-    await checkFullExtent(`English ${width} × ${height} extent`)
+    await checkOpeningExtent(`English ${width} × ${height} extent`)
     if (width===1366) await screenshot('20-english-laptop-layout')
     await setLanguage('id')
   }
@@ -638,14 +1005,15 @@ try {
     checks.languagePersistenceAndErrors = true
     checks.dataErrorAndRetry = true
   }
+  }
   checks.noCriticalErrors = exceptions.length === 0 && consoleErrors.length === 0
-  checks.rangeOnly = ranges.length > 0 && ranges.every(r => r.status === 206 && r.range && r.bytes <= 16 * 1024 * 1024 && r.contentRange?.endsWith(`/${archiveBytes}`))
-  const report = { scope: 'Actual Vue application at http://localhost:5173; local Range PMTiles via official browser protocol', browserVersion, checks, ranges, imageryResponses, exceptions, consoleErrors, failures, screenshots,
+  if (!isolatedUi) checks.rangeOnly = ranges.length > 0 && ranges.every(r => r.status === 206 && r.range && r.bytes <= 16 * 1024 * 1024 && r.contentRange?.endsWith(`/${archiveBytes}`))
+  const report = { scope: opacityResponseOnly ? 'Focused real mouse opacity drag, source-reload count and rendered paint while pointer is held; isolated local archive' : layerControlsOnly ? 'Focused building opacity disclosure, real MapLibre paint/inspection, value retention, keyboard/close controls and bilingual responsive UI; isolated local archive, no full UAT' : mapFramingOnly ? 'Focused opening mainland/full-DKI framing, tight symmetric bounds, overlays, resize/fullscreen and camera/filter preservation; isolated UI server, no full UAT' : chartNavigationOnly ? 'Focused bilingual chart Back/reset, filter semantics, keyboard focus and responsive layout on an isolated Vite/local-archive server; primary R2 configuration unchanged; no full UAT or archive revalidation' : 'Actual Vue application at http://localhost:5173; local Range PMTiles via official browser protocol', appUrl, browserVersion, checks, ranges, imageryResponses, exceptions, consoleErrors, failures, screenshots,
     limitations: ['Headless Chrome / software WebGL, not a physical mobile or GPU performance certification', 'Range bytes reflect representative views and canceled navigation requests, not a production bandwidth budget', 'Blocked external basemap and navigation cancellations are intentional network failures'] }
   await writeFile(resolve(qa, 'app-report.json'), JSON.stringify(report, null, 2) + '\n')
   console.log(JSON.stringify({ checks, rangeRequests: ranges.length, rangeBytes: ranges.reduce((n, r) => n + r.bytes, 0), exceptions, consoleErrors, failures }, null, 2))
   assert(checks.noCriticalErrors, 'Critical browser errors')
-  assert(checks.rangeOnly, 'All archive requests must use bounded Range / 206')
+  if (!isolatedUi) assert(checks.rangeOnly, 'All archive requests must use bounded Range / 206')
   await command('Browser.close').catch(() => {})
 } catch (error) {
   if (command) { await screenshot('failure').catch(() => {}); console.log(await evaluate(`({url:location.href,state:document.readyState,html:document.documentElement.outerHTML.slice(0,3000),map:!!window.__SOLAR_MAP__})`).catch(() => null)) }
@@ -656,4 +1024,5 @@ try {
   await pause(1000)
   assert(profile.startsWith(qa + sep))
   await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }).catch(() => {})
+  await chartServer?.close()
 }

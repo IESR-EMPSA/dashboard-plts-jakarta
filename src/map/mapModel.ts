@@ -1,6 +1,6 @@
 import type { Feature, MultiPolygon, Position } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
-import type { DashboardFilters, ReadonlyDashboardData } from '../types/dashboard.ts'
+import type { DashboardFilters, ReadonlyBoundaries, ReadonlyDashboardData } from '../types/dashboard.ts'
 import { selectBuildingTypeLabels } from '../selectors/dashboard.ts'
 import { BUILDING_ARCHIVE } from './buildingArchive.ts'
 
@@ -34,6 +34,11 @@ export function collectionBounds(geometries: readonly Parameters<typeof geometry
   const bounds = geometries.map(geometryBounds)
   return [[Math.min(...bounds.map(b => b[0][0])), Math.min(...bounds.map(b => b[0][1]))],
     [Math.max(...bounds.map(b => b[1][0])), Math.max(...bounds.map(b => b[1][1]))]]
+}
+
+/** The opening view shows the five mainland cities; full-DKI navigation includes Seribu. */
+export function mainlandBounds(regions: ReadonlyBoundaries): ReturnType<typeof collectionBounds> {
+  return collectionBounds(regions.features.filter(f => f.properties.wilayah !== 'Kepulauan Seribu').map(f => f.geometry))
 }
 
 export function featureCenter(feature: Feature<MultiPolygon>): Position {

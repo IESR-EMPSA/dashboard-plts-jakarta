@@ -22,3 +22,8 @@ defineExpose({ open: () => dialog.value?.showModal() })
     </div>
   </dialog>
 </template>
+
+<style scoped>
+.methodology-content { padding-top: 12px; }
+.methodology-content > .methodology-lead { margin-top: 0; }
+</style>

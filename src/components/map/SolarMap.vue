@@ -10,7 +10,7 @@ import { copyBoundaryGeoJson } from '../../services/boundaryGeoJson.ts'
 import { adaptBuildingProperties } from '../../services/normalization.ts'
 import type { NormalizedBuildingProperties } from '../../types/dashboard.ts'
 import type { MessageKey } from '../../i18n/messages.ts'
-import { BUILDING_MIN_ZOOM, BUILDING_MAX_ZOOM, BUILDING_SOURCE_LAYER, buildingFilter, collectionBounds, featureCenter, geometryBounds } from '../../map/mapModel.ts'
+import { BUILDING_MIN_ZOOM, BUILDING_MAX_ZOOM, BUILDING_SOURCE_LAYER, buildingFilter, collectionBounds, featureCenter, geometryBounds, mainlandBounds } from '../../map/mapModel.ts'
 import type { MapMetric } from '../../map/mapModel.ts'
 import { buildingArchiveUrl, prepareMapRuntime } from '../../map/protocol.ts'
 import { viewportHasFeatures } from '../../map/renderedFeatures.ts'
@@ -26,8 +26,14 @@ const dashboard = useDashboard()
 const { data, filters, boundaries } = dashboard
 const panel = ref<HTMLElement | null>(null)
 const container = ref<HTMLDivElement | null>(null)
+const layerMenu = ref<HTMLDetailsElement | null>(null)
+const overlays = ref<HTMLDivElement | null>(null)
 const metric = ref<MapMetric>('capacity_mwp')
 const buildingsVisible = ref(true), boundariesVisible = ref(true), districtLinesVisible = ref(false), choroplethVisible = ref(true)
+const opacityOpen = ref(false), buildingOpacity = ref(80)
+const buildingFillOpacity = computed(() => buildingOpacity.value / 100)
+const highlightedBuilding: ExpressionSpecification =
+  ['any', ['boolean', ['feature-state', 'selected'], false], ['boolean', ['feature-state', 'hover'], false]]
 const basemap = ref<BasemapId>('openfreemap'), imageryUnavailable = ref(false)
 const busy = ref(true), ready = ref(false), baseUnavailable = ref(false), mapError = ref<MessageKey | null>(null), zoom = ref(10.7)
 const emptyView = ref(false)
@@ -44,12 +50,13 @@ const tooltipText = computed(() => {
     : { title: item.district ? districtName(item.name) : regionName(item.name), detail: item.value === null ? t('map.noEnergy') : `${legendNumber(item.value)} ${metricUnit.value}` }
 })
 let map: MapLibreMap | undefined, disposed = false, hoveredId: string | number | null = null
-let viewingFullExtent = true
+let fittedView: 'mainland' | 'dki' | null = 'mainland'
 let emptyViewNeedsCheck = true
 let baseLayers: string[] = [], baseSources = new Set<string>()
 const markers: { marker: Marker; name: string }[] = []
 const metricLabels: Record<MapMetric, MessageKey> = { capacity_mwp: 'chart.capacity', annual_gwh: 'chart.energy', eligibility_rate: 'kpi.eligibility' }
 let resizeObserver: ResizeObserver | undefined
+let overlayResizeObserver: ResizeObserver | undefined
 const duration = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 650
 const activeRows = computed(() => !data.value ? [] : filters.regionId ? data.value.districts.districts.filter(d => d.region_id === filters.regionId) : data.value.regions.regions)
 const metricMax = computed(() => Math.max(0.000001, ...activeRows.value.map(row => row[metric.value] ?? 0)))
@@ -64,7 +71,22 @@ const basemapNotice = computed(() => {
 })
 
 function fullExtent() { return collectionBounds((boundaries.region.data.value?.features ?? []).map(f => f.geometry)) }
-function extentPadding() { return { top: 32, right: 32, bottom: 100, left: 32 } }
+function openingExtent() { return boundaries.region.data.value ? mainlandBounds(boundaries.region.data.value) : null }
+function openingPadding() { return Math.round(Math.min(container.value!.clientWidth, container.value!.clientHeight) * 0.1) }
+function fitView(view: 'mainland' | 'dki', animationDuration = duration()) {
+  const bounds = view === 'mainland' ? openingExtent() : fullExtent()
+  if (!map || !bounds) return
+  fittedView = view
+  map.fitBounds(bounds, { padding: view === 'mainland' ? openingPadding() : 24, bearing: 0, pitch: 0, duration: animationDuration })
+}
+function positionOverlays() {
+  const attribution = container.value?.querySelector<HTMLElement>('.maplibregl-ctrl-attrib')
+  if (!attribution || !overlays.value || !container.value) return
+  const attributionBox = attribution.getBoundingClientRect(), overlayBox = overlays.value.getBoundingClientRect()
+  // Keep the corner inset small; only lift the stack when attribution occupies it.
+  const bottom = overlayBox.right + 8 > attributionBox.left ? container.value.getBoundingClientRect().bottom - attributionBox.top + 6 : 8
+  overlays.value.style.bottom = `${bottom}px`
+}
 
 // Update public control elements in place: MapLibre's constructor locale is static.
 // This preserves the fullscreen session, source cache, camera and feature state.
@@ -97,12 +119,18 @@ function focusSelection() {
   const collection = filters.districtId ? boundaries.district.data.value : boundaries.region.data.value
   const id = filters.districtId || filters.regionId
   const feature = collection?.features.find(f => f.id === id)
-  if (feature) { viewingFullExtent = false; map.fitBounds(geometryBounds(feature.geometry), { padding: 58, maxZoom: 16, bearing: 0, pitch: 0, duration: duration() }) }
+  if (feature) { fittedView = null; map.fitBounds(geometryBounds(feature.geometry), { padding: 58, maxZoom: 16, bearing: 0, pitch: 0, duration: duration() }) }
 }
 function resetView() {
-  if (!map) return
-  const bounds = fullExtent()
-  if (bounds) { viewingFullExtent = true; map.fitBounds(bounds, { padding: extentPadding(), bearing: 0, pitch: 0, duration: duration() }) }
+  fitView('dki')
+}
+function closeLayers() {
+  if (!layerMenu.value) return
+  layerMenu.value.open = false
+  layerMenu.value.querySelector<HTMLElement>('summary')?.focus({ preventScroll: true })
+}
+function handleLayerMenuToggle(event: Event) {
+  if (!(event.currentTarget as HTMLDetailsElement).open) opacityOpen.value = false
 }
 function inspectCenter() {
   if (!map || !ready.value || zoom.value < BUILDING_MIN_ZOOM) return
@@ -119,7 +147,7 @@ function updateAppearance() {
   if (!map || !ready.value || !data.value) return
   emptyViewNeedsCheck = true
   const filter = buildingFilter(data.value, filters)
-  for (const id of ['solar-building-fill', 'solar-building-outline']) {
+  for (const id of ['solar-building-fill', 'solar-building-highlight', 'solar-building-outline']) {
     if (map.getLayer(id)) { map.setFilter(id, filter); map.setLayoutProperty(id, 'visibility', buildingsVisible.value ? 'visible' : 'none') }
   }
   const imageryActive = basemap.value === 'google-imagery' && !imageryUnavailable.value
@@ -179,7 +207,7 @@ async function initialize() {
   const style: StyleSpecification = { ...base.style, sources: { ...base.style.sources, [GOOGLE_IMAGERY_SOURCE]: googleImagerySource() },
     layers: [...neutralStyle().layers, ...base.style.layers.filter(l => l.id !== 'solar-background'),
       { id: GOOGLE_IMAGERY_LAYER, type: 'raster', source: GOOGLE_IMAGERY_SOURCE, layout: { visibility: 'none' } }] }
-  map = new MapLibreMap({ container: container.value, style, bounds: fullExtent()!, fitBoundsOptions: { padding: extentPadding() },
+  map = new MapLibreMap({ container: container.value, style, bounds: openingExtent()!, fitBoundsOptions: { padding: openingPadding() },
     minZoom: 5, maxZoom: 20, renderWorldCopies: false,
     // Dense z13 geometry is expensive to retain after navigation. Bound the
     // viewport-sized cache without changing source zooms, geometry or filters.
@@ -188,6 +216,7 @@ async function initialize() {
       'NavigationControl.ZoomIn': t('map.zoomIn'), 'NavigationControl.ZoomOut': t('map.zoomOut'),
       'AttributionControl.ToggleAttribution': t('map.toggleAttribution'), 'Map.Title': t('map.canvas') },
     attributionControl: { compact: false }, canvasContextAttributes: { preserveDrawingBuffer: true } })
+  zoom.value = map.getZoom()
   map.getCanvas().setAttribute('aria-label', t('map.canvas'))
   map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
   const fullscreen = new FullscreenControl({ container: panel.value! })
@@ -203,7 +232,7 @@ async function initialize() {
     mapError.value = 'map.renderError'; console.error('Solar map error', event.error)
   })
   map.on('zoom', () => { zoom.value = map!.getZoom(); for (const { marker } of markers) marker.getElement().style.display = zoom.value < 13 ? '' : 'none' })
-  map.on('movestart', event => { if (event.originalEvent) viewingFullExtent = false })
+  map.on('movestart', event => { if (event.originalEvent) fittedView = null })
   map.on('moveend', () => { emptyViewNeedsCheck = true })
   map.on('mousemove', handleMove); map.on('click', handleClick); map.on('mouseout', clearHover)
   map.on('idle', () => {
@@ -241,9 +270,17 @@ async function initialize() {
       map.addSource('solar-buildings', { type: 'vector', url: `pmtiles://${archive}`, minzoom: BUILDING_MIN_ZOOM, maxzoom: BUILDING_MAX_ZOOM, promoteId: 'building_uid',
         attribution: t('map.attribution') })
       const filter = buildingFilter(data.value, filters)
+      // Keep feature-state expressions fixed: rewriting them on every slider
+      // input makes MapLibre reprocess the source tiles. Layer opacity is a
+      // constant paint update; highlighted buildings render independently.
       map.addLayer({ id: 'solar-building-fill', type: 'fill', source: 'solar-buildings', 'source-layer': BUILDING_SOURCE_LAYER, minzoom: BUILDING_MIN_ZOOM, filter,
-        paint: { 'fill-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#ed9138', ['boolean', ['feature-state', 'hover'], false], '#f3b55d', ['==', ['get', 'pvout_status'], 'NoData'], '#c7973d',
-          ['interpolate', ['linear'], ['get', 'capacity_kwp'], 0, '#a5d4c8', 8, '#5aa895', 25, '#267f79', 100, '#15586b', 500, '#163d56']], 'fill-opacity': 0.9 } })
+        paint: { 'fill-color': ['case', ['==', ['get', 'pvout_status'], 'NoData'], '#c7973d',
+          ['interpolate', ['linear'], ['get', 'capacity_kwp'], 0, '#a5d4c8', 8, '#5aa895', 25, '#267f79', 100, '#15586b', 500, '#163d56']],
+          'fill-opacity': ['case', highlightedBuilding, 0, 1],
+          'fill-layer-opacity': buildingFillOpacity.value, 'fill-layer-opacity-transition': { duration: 0, delay: 0 } } })
+      map.addLayer({ id: 'solar-building-highlight', type: 'fill', source: 'solar-buildings', 'source-layer': BUILDING_SOURCE_LAYER, minzoom: BUILDING_MIN_ZOOM, filter,
+        paint: { 'fill-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#ed9138', '#f3b55d'],
+          'fill-opacity': ['case', highlightedBuilding, 0.9, 0] } })
       map.addLayer({ id: 'solar-building-outline', type: 'line', source: 'solar-buildings', 'source-layer': BUILDING_SOURCE_LAYER, minzoom: BUILDING_MIN_ZOOM, filter,
         paint: { 'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#a24918', ['boolean', ['feature-state', 'hover'], false], '#ba6a29', '#346f6a'],
           'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 2, ['boolean', ['feature-state', 'hover'], false], 1.5, 0.25], 'line-opacity': 0.8 } })
@@ -256,18 +293,26 @@ async function initialize() {
     ready.value = true; busy.value = false; updateAppearance(); updateMapLanguage(); focusSelection()
     if (import.meta.env.DEV) window.__SOLAR_MAP__ = map
   })
-  // Retain the full administrative extent through fullscreen/responsive resizes,
-  // while preserving detail views after the user navigates the map.
-  resizeObserver = new ResizeObserver(() => { map?.resize(); if (viewingFullExtent) resetView() }); resizeObserver.observe(container.value)
+  // Refit the current opening/full-DKI view on resize, preserving manual navigation.
+  resizeObserver = new ResizeObserver(() => { map?.resize(); if (fittedView) fitView(fittedView, 0); positionOverlays() })
+  resizeObserver.observe(container.value)
+  overlayResizeObserver = new ResizeObserver(positionOverlays)
+  if (overlays.value) overlayResizeObserver.observe(overlays.value)
+  const attribution = container.value.querySelector('.maplibregl-ctrl-attrib')
+  if (attribution) overlayResizeObserver.observe(attribution)
 }
 
 watch([metric, buildingsVisible, boundariesVisible, districtLinesVisible, choroplethVisible, basemap, baseUnavailable, imageryUnavailable, () => filters.regionId, () => filters.districtId, () => filters.typeId], updateAppearance)
+watch(buildingsVisible, visible => { if (!visible) opacityOpen.value = false })
+watch(buildingFillOpacity, opacity => {
+  if (map?.getLayer('solar-building-fill')) map.setPaintProperty('solar-building-fill', 'fill-layer-opacity', opacity)
+})
 watch(() => [filters.regionId, filters.districtId], () => { emit('select', null); clearHover(); filters.regionId ? focusSelection() : resetView() })
 watch(() => filters.typeId, () => { emit('select', null); clearHover() })
 watch(() => props.selectedId, (id, previous) => { setFeature(previous, { selected: false }); setFeature(id, { selected: true }) })
 watch(locale, updateMapLanguage)
 onMounted(() => { void initialize().catch(error => { busy.value = false; mapError.value = 'map.initializeError'; console.error('Map initialization failed', error) }) })
-onBeforeUnmount(() => { disposed = true; resizeObserver?.disconnect(); markers.forEach(({ marker }) => marker.remove()); if (import.meta.env.DEV) delete window.__SOLAR_MAP__; map?.remove() })
+onBeforeUnmount(() => { disposed = true; resizeObserver?.disconnect(); overlayResizeObserver?.disconnect(); markers.forEach(({ marker }) => marker.remove()); if (import.meta.env.DEV) delete window.__SOLAR_MAP__; map?.remove() })
 defineExpose({ resetView })
 declare global { interface Window { __SOLAR_MAP__?: MapLibreMap } }
 </script>
@@ -275,8 +320,18 @@ declare global { interface Window { __SOLAR_MAP__?: MapLibreMap } }
 <template>
   <section ref="panel" class="map-panel" :aria-label="t('map.label')" :class="{ 'imagery-basemap': basemap === 'google-imagery' && !imageryUnavailable }">
     <header class="map-panel-header"><div class="map-title"><AppIcon name="globe" :size="18" /><strong>{{ t('map.title') }}</strong><span class="map-scope">{{ scope }}</span></div>
-      <div class="map-toolbar"><details class="layer-menu"><summary class="button button-quiet"><AppIcon name="layers" :size="16" /> {{ t('map.layers') }}</summary><div class="layer-popover">
-        <strong>{{ t('map.display') }}</strong><label><input v-model="buildingsVisible" type="checkbox"> {{ t('kpi.eligible') }} <small>zoom {{ BUILDING_MIN_ZOOM }}+</small></label><label><input v-model="choroplethVisible" type="checkbox"> {{ t('map.choropleth') }}</label><label><input v-model="boundariesVisible" type="checkbox"> {{ t('map.boundaries') }}</label><label><input v-model="districtLinesVisible" type="checkbox"> {{ t('map.districts') }}</label>
+      <div class="map-toolbar"><details ref="layerMenu" class="layer-menu" @toggle="handleLayerMenuToggle" @keydown.esc.stop.prevent="closeLayers"><summary class="button button-quiet"><AppIcon name="layers" :size="16" /> {{ t('map.layers') }}</summary><div class="layer-popover">
+        <div class="layer-popover-header"><strong>{{ t('map.display') }}</strong><button type="button" class="icon-button" data-testid="layer-close" :aria-label="t('map.closeLayers')" :title="t('map.closeLayers')" @click="closeLayers"><AppIcon name="close" :size="16" /></button></div>
+        <div class="building-layer-row">
+          <label><input v-model="buildingsVisible" type="checkbox" data-testid="buildings-visible"> {{ t('kpi.eligible') }} <small>zoom {{ BUILDING_MIN_ZOOM }}+</small></label>
+          <button type="button" class="icon-button opacity-toggle" data-testid="opacity-toggle" :disabled="!buildingsVisible" :aria-expanded="opacityOpen" aria-controls="building-opacity-panel" :aria-label="t('map.adjustOpacity')" :title="t('map.adjustOpacity')" @click="opacityOpen = !opacityOpen"><AppIcon name="filter" :size="16" /></button>
+        </div>
+        <div v-show="opacityOpen" id="building-opacity-panel" class="building-opacity" role="group" :aria-label="t('map.buildingOpacity')">
+          <div class="opacity-heading"><label for="building-opacity">{{ t('map.opacity') }}</label><output for="building-opacity">{{ n(buildingOpacity, 0) }}%</output></div>
+          <input id="building-opacity" v-model.number="buildingOpacity" data-testid="building-opacity" type="range" min="0" max="100" step="5" :disabled="!buildingsVisible" :aria-valuetext="t('map.opacityValue', { value: n(buildingOpacity, 0) })">
+          <div class="opacity-limits" aria-hidden="true"><span>{{ t('map.moreTransparent') }}</span><span>{{ t('map.moreSolid') }}</span></div>
+        </div>
+        <label><input v-model="choroplethVisible" type="checkbox"> {{ t('map.choropleth') }}</label><label><input v-model="boundariesVisible" type="checkbox"> {{ t('map.boundaries') }}</label><label><input v-model="districtLinesVisible" type="checkbox"> {{ t('map.districts') }}</label>
         <div class="filter-divider" /><span class="field-label">{{ t('map.basemap') }}</span><div class="segmented basemap-options" role="group" :aria-label="t('map.chooseBasemap')"><button :aria-pressed="basemap === 'openfreemap'" data-testid="basemap-openfreemap" @click="basemap = 'openfreemap'">OpenFreeMap</button><button :aria-pressed="basemap === 'google-imagery'" data-testid="basemap-google" @click="basemap = 'google-imagery'">{{ t('map.google') }}</button></div>
       </div></details><button class="icon-button" data-testid="map-extent" :title="t('map.extent')" :aria-label="t('map.extent')" @click="resetView"><AppIcon name="extent" :size="18" /></button></div>
     </header>
@@ -287,12 +342,32 @@ declare global { interface Window { __SOLAR_MAP__?: MapLibreMap } }
       <div v-else-if="emptyView && !busy" class="map-empty" role="status">{{ t('map.empty') }}</div>
       <div v-if="!ready && busy" class="map-loading"><span class="spinner" /><strong>{{ t('map.preparing') }}</strong><span>{{ t('map.loading') }}</span></div>
       <div v-if="tooltip && tooltipText" class="map-tooltip" :style="{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }" aria-hidden="true"><strong>{{ tooltipText.title }}</strong><span>{{ tooltipText.detail }}</span></div>
-      <div class="map-legend">
-        <template v-if="zoom < BUILDING_MIN_ZOOM || !buildingsVisible"><label for="map-metric">{{ t('map.areaColors') }}</label><select id="map-metric" v-model="metric" :aria-label="t('map.metric')"><option v-for="(label, key) in metricLabels" :key="key" :value="key">{{ t(label) }}</option></select><div class="choropleth-ramp" /><div class="legend-ticks"><span>0</span><span>{{ legendNumber(metricMax) }} {{ metricUnit }}</span></div><p><i class="legend-dot missing" /> {{ t('map.energyUnavailable') }}</p></template>
-        <template v-else><label>{{ t('map.buildingPotential') }}</label><div class="building-ramp" /><div class="legend-ticks"><span>0</span><span>25</span><span>≥ 500</span></div><p><i class="legend-dot amber" /> {{ t('common.pvoutMissing') }}</p></template>
+      <div ref="overlays" class="map-overlays">
+        <div class="map-legend">
+          <template v-if="zoom < BUILDING_MIN_ZOOM || !buildingsVisible"><label for="map-metric">{{ t('map.areaColors') }}</label><select id="map-metric" v-model="metric" :aria-label="t('map.metric')"><option v-for="(label, key) in metricLabels" :key="key" :value="key">{{ t(label) }}</option></select><div class="choropleth-ramp" /><div class="legend-ticks"><span>0</span><span>{{ legendNumber(metricMax) }} {{ metricUnit }}</span></div><p><i class="legend-dot missing" /> {{ t('map.energyUnavailable') }}</p></template>
+          <template v-else><label>{{ t('map.buildingPotential') }}</label><div class="building-ramp" /><div class="legend-ticks"><span>0</span><span>25</span><span>≥ 500</span></div><p><i class="legend-dot amber" /> {{ t('common.pvoutMissing') }}</p></template>
+        </div>
+        <div class="map-instructions"><span class="status-dot" :class="{ pending: busy }" /><span>{{ zoom < BUILDING_MIN_ZOOM ? t('map.zoomHint') : t('map.clickHint') }}</span><button v-if="zoom >= BUILDING_MIN_ZOOM && buildingsVisible" :title="t('map.inspectTitle')" :aria-label="t('map.inspectLabel')" data-testid="inspect-center" @click="inspectCenter"><AppIcon name="cursor" :size="15" /> {{ t('map.inspect') }}</button><small>z{{ n(zoom, 1) }}</small></div>
       </div>
-      <div class="map-instructions"><span class="status-dot" :class="{ pending: busy }" /><span>{{ zoom < BUILDING_MIN_ZOOM ? t('map.zoomHint') : t('map.clickHint') }}</span><button v-if="zoom >= BUILDING_MIN_ZOOM && buildingsVisible" :title="t('map.inspectTitle')" :aria-label="t('map.inspectLabel')" data-testid="inspect-center" @click="inspectCenter"><AppIcon name="cursor" :size="15" /> {{ t('map.inspect') }}</button><small>z{{ n(zoom, 1) }}</small></div>
       <slot />
     </div>
   </section>
 </template>
+
+<style scoped>
+.map-overlays { position: absolute; left: 8px; bottom: 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: calc(100% - 16px); z-index: 2; pointer-events: none; }
+.map-overlays > .map-legend, .map-overlays > .map-instructions { position: static; inset: auto; max-width: 100%; pointer-events: auto; }
+.map-overlays > .map-instructions { flex-wrap: wrap; row-gap: 4px; }
+.layer-popover-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.layer-popover-header .icon-button { width: 32px; height: 32px; }
+.building-layer-row { display: flex; align-items: center; gap: 6px; }
+.building-layer-row > label { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; margin: 4px 0; }
+.building-layer-row small { margin-left: auto; color: #767f76; font-size: 10px; white-space: nowrap; }
+.building-layer-row .opacity-toggle { width: 28px; height: 28px; background: transparent; border-color: transparent; }
+.opacity-toggle[aria-expanded="true"] { color: var(--green); background: #edf4ed; }
+.building-opacity { margin: 5px 0 12px 22px; padding: 10px; border: 1px solid #e3ebe3; border-radius: 7px; background: #f5f8f3; }
+.opacity-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
+.opacity-heading output { color: var(--green); font-weight: 650; font-variant-numeric: tabular-nums; }
+.building-opacity input[type="range"] { display: block; width: 100%; height: 20px; margin: 8px 0 4px; cursor: pointer; }
+.opacity-limits { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 9px; }
+</style>

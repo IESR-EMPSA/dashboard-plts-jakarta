@@ -12,6 +12,7 @@ import MapLoading from './components/map/MapLoading.vue'
 import BuildingDetails from './components/map/BuildingDetails.vue'
 import MethodologyPanel from './components/methodology/MethodologyPanel.vue'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
+import iesrLogo from './assets/iesr-logo.png'
 
 const { t, errorMessage, locale, regionName, districtName, typeName } = useI18n()
 watchEffect(() => {
@@ -46,7 +47,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', escape))
 <template>
   <a class="skip-link" href="#main-content">{{ t('app.skip') }}</a>
   <header class="app-header">
-    <a class="brand" href="#main-content" aria-label="IESR Jakarta Solar Explorer"><span class="brand-emblem"><AppIcon name="sun" :size="23" /></span><span class="brand-name">IESR<span>JAKARTA SOLAR EXPLORER</span></span></a>
+    <a class="brand" href="#main-content" aria-label="IESR Jakarta Solar Explorer"><img class="brand-logo" :src="iesrLogo" alt="" width="40" height="40"><span class="brand-name">IESR<span>JAKARTA SOLAR EXPLORER</span></span></a>
     <nav class="header-nav" :aria-label="t('app.nav')"><button :aria-current="activeTab === 'map' ? 'page' : undefined" @click="navigate('map')">{{ t('app.mapTab') }}</button><button :aria-current="activeTab === 'analisis' ? 'page' : undefined" @click="navigate('analisis')">{{ t('app.analysisTab') }}</button></nav>
     <div class="header-actions"><LanguageSwitcher /><button class="button button-outline" @click="methodology?.open()" :aria-label="t('app.methodology')" :title="t('app.methodology')"><AppIcon name="info" :size="16" />{{ t('app.methodology') }}</button></div>
   </header>
@@ -56,9 +57,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', escape))
       <div v-if="status === 'error'" class="app-alert" role="alert"><AppIcon name="info" /><div><strong>{{ t('app.dataError') }}</strong><p>{{ errorMessage(error) }}</p></div><button class="button button-outline" @click="dashboard.refresh()">{{ t('app.retry') }}</button></div>
       <div v-if="kpis.status === 'unsupported'" class="unsupported-notice" role="status"><AppIcon name="info" :size="18" /><p>{{ t('app.unsupported') }}</p><button class="text-button" @click="dashboard.setBuildingType(null)">{{ t('app.regionalStats') }} <AppIcon name="arrow" :size="15" /></button></div>
       <KpiCards :selection="kpis" :loading="status === 'loading' || status === 'idle'" />
-      <div class="generation-caption"><AppIcon name="info" :size="14" /><span>{{ t('app.energyCaveat') }}</span></div>
       <section id="workspace" class="workspace">
-        <aside class="analysis-sidebar" tabindex="0" :aria-label="t('app.sidebar')"><AdminFilters @reset="reset" @methodology="methodology?.open()" /><CoverageCard :selection="kpis" :scope="scope" /></aside>
+        <aside class="analysis-sidebar" tabindex="0" :aria-label="t('app.sidebar')"><AdminFilters @reset="reset" /><CoverageCard :selection="kpis" :scope="scope" /></aside>
         <SolarMap v-if="data" ref="solarMap" :selected-id="selected?.building_uid ?? null" :scope="scope" @select="selected = $event">
           <BuildingDetails v-if="selected" :building="selected" @close="selected = null" />
         </SolarMap>

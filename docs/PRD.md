@@ -45,8 +45,10 @@ Deliver an interactive research WebGIS for exploring **modeled rooftop photovolt
 - **Combined filter** (e.g. Kecamatan Tebet + Non Hunian): requires precomputed `summary_kecamatan_jenis.json` or another exact aggregate. Until provided, do not invent combined sums; disable cross-dimensional KPI recalculation and explain limitation.
 - Building layer style filters may apply locally to fetched tiles, but that never becomes the denominator of global summary calculations.
 - Selecting a kab/kota excludes districts outside the selection, and district choice resets if user changes parent.
+- The comparison chart provides Back to the parent administrative scope (district → region → DKI) and Reset area to clear both administrative selections directly. Actions share a stable single-row toolbar with the metric switcher; their slots remain visible and disabled at DKI scope. Actions preserve the chart metric and building-type filter, use shared dashboard state, and retain keyboard focus. Responsive labels, tooltips and accessible names support Indonesian and English.
 
 ### Building map
+- Open on the five mainland Jakarta cities with modest context, matching the approved reference. The extent control fits the exact combined bounds of all six published administrative geometries, including Kepulauan Seribu, with a small symmetric margin. Resizing/fullscreen retains the active fitted view; manual navigation keeps its camera.
 - The current building-tile zoom range is **13–18**, using a separate GeoPackage-verified repaired archive. The original z14–16 archive and QA remain preserved baseline/rollback evidence; see ARCHIVE_REPAIR_REPORT.md.
 - Never request all building polygons as one GeoJSON.
 - MapLibre loads PMTiles MVT via HTTP Range requests. The repaired archive's Cloudflare R2 development URL is verified with localhost; production domain/origin/deployment gates remain. The preserved local archive remains available through configuration fallback. See R2_LOCAL_INTEGRATION.md.
@@ -59,6 +61,7 @@ Deliver an interactive research WebGIS for exploring **modeled rooftop photovolt
 ### Visual and quality states
 - Loading skeletons, offline errors, missing JSON errors, empty selection and no PVOUT states.
 - Clear visible notice for Kepulauan Seribu PVOUT incompleteness.
+- Technical-versus-installed capacity and the detailed PVOUT/missing-energy explanation are consolidated in the methodology modal. Keep the compact generation-card PVOUT label and explicit unavailable values in context; remove the former sidebar research note and overview energy-caption strip.
 - Source and attribution visible on basemap and exported reports.
 - Hover accessible alternative via click/tap, keyboard-accessible controls and readable contrast.
 

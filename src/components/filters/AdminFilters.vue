@@ -5,7 +5,7 @@ import AppIcon from '../AppIcon.vue'
 
 const { t, regionName, districtName, typeName } = useI18n()
 
-defineEmits<{ reset: []; methodology: [] }>()
+defineEmits<{ reset: [] }>()
 const { filters, regionOptions, districtOptions, typeOptions, status, setRegion, setDistrict, setBuildingType } = useDashboard()
 const value = (event: Event) => (event.target as HTMLSelectElement).value || null
 </script>
@@ -27,7 +27,5 @@ const value = (event: Event) => (event.target as HTMLSelectElement).value || nul
       <option value="">{{ t('filter.allTypes') }}</option><option v-for="type in typeOptions" :key="type.id" :value="type.id">{{ typeName(type.jenis_group) }}</option>
     </select>
     <button class="button button-quiet reset-filters" @click="$emit('reset')"><AppIcon name="reset" :size="16" /> {{ t('filter.reset') }}</button>
-    <div class="research-note"><AppIcon name="info" :size="18" /><p>{{ t('filter.note') }}</p></div>
-    <button class="text-button methodology-link" @click="$emit('methodology')">{{ t('filter.methodology') }} <AppIcon name="arrow" :size="15" /></button>
   </section>
 </template>

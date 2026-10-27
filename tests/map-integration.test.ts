@@ -3,7 +3,7 @@ import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { archiveMiddleware, LOCAL_PMTILES_PATH, MAX_RANGE_BYTES, parseByteRange } from '../scripts/dev/pmtilesPlugin.ts'
-import { buildingFilter, collectionBounds, geometryBounds, POLYGON_FILTER, BUILDING_SOURCE_LAYER } from '../src/map/mapModel.ts'
+import { buildingFilter, collectionBounds, geometryBounds, mainlandBounds, POLYGON_FILTER, BUILDING_SOURCE_LAYER } from '../src/map/mapModel.ts'
 import { createSolarDataService } from '../src/services/solarDataService.ts'
 import { numberId } from '../src/utils/presentation.ts'
 import { viewportHasFeatures } from '../src/map/renderedFeatures.ts'
@@ -68,6 +68,18 @@ test('full DKI extent covers every real administrative polygon including norther
     assert(lng! >= bounds[0][0] && lng! <= bounds[1][0] && lat! >= bounds[0][1] && lat! <= bounds[1][1])
   }
   assert.equal(collectionBounds([]), null)
+})
+
+test('opening extent fits the five mainland cities without the northern Seribu extent', async () => {
+  const regions = await service.loadBoundaries('region')
+  const bounds = mainlandBounds(regions)!
+  assert.equal(regions.features.filter(f => f.properties.wilayah !== 'Kepulauan Seribu').length, 5)
+  assert(bounds[0][0] > 106.68 && bounds[0][0] < 106.69)
+  assert(bounds[1][0] > 106.97 && bounds[1][0] < 106.98)
+  assert(bounds[0][1] < -6.37 && bounds[1][1] > -6.08 && bounds[1][1] < -6.07)
+  const full = collectionBounds(regions.features.map(f => f.geometry))!
+  assert(bounds[0][1] === full[0][1] && bounds[1][0] === full[1][0])
+  assert(bounds[1][1] < full[1][1])
 })
 test('display uses Indonesian numbers and preserves unavailable values', () => {
   assert.equal(numberId(1470399, 0), '1.470.399')
