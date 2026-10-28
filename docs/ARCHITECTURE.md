@@ -70,4 +70,4 @@ The dev server stays on strict localhost port 5173. Watch exclusions protect raw
 
 Use [README](../README.md) for commands and [documentation index](README.md) for script prerequisites/evidence. The dev-only `window.__SOLAR_MAP__` hook supports browser QA and is removed by production compilation; retain it. Dynamic icon names, catalog keys, async components, tested contract exports and historical diagnostic pages must not be removed through naive text matching.
 
-[Technical QA](TECHNICAL_QA_REPORT.md) preserves earlier memory/bandwidth measurements and limitations; deployment is not a new hardware/network or source-rights certification. The latest zero-change checks are in [repository review](PROJECT_REVIEW.md).
+[Technical QA](TECHNICAL_QA_REPORT.md) preserves earlier memory/bandwidth measurements and limitations; deployment is not a new hardware/network or source-rights certification. The latest behavior-preserving maintenance checks are in [repository review](PROJECT_REVIEW.md). Historical byte-identical build claims apply only to their original cleanup snapshot.

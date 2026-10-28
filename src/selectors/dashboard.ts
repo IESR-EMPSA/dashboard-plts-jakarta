@@ -59,7 +59,7 @@ export function selectKpis(data: ReadonlyDashboardData, filters: Readonly<Dashbo
 export function selectTypeStatistics(data: ReadonlyDashboardData) {
   return { scope: { kind: 'dki' as const }, types: data.types.types }
 }
-/** Raw aliases for future tile filtering; no MapLibre layer/expression is created here. */
+/** Raw aliases for the current building filter; layer expressions belong to the map module. */
 export function selectBuildingTypeLabels(data: ReadonlyDashboardData, typeId: string | null) {
   if (typeId === null) return { status: 'available' as const, labels: null }
   const type = data.buildingTypes.categories.find(t => t.id === typeId)

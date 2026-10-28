@@ -4,7 +4,7 @@
 
 The owner confirms manual UAT is complete and the frontend is deployed on **Vercel**, production branch **main**, with repaired native z13–18 PMTiles served by the **Cloudflare R2 custom domain**. See [deployment](DEPLOYMENT.md) for URLs and independent read-only checks.
 
-The zero-change repository cleanup is complete. A subsequent owner-approved local follow-up sets English as the first-visit/default language and retains valid saved ID/EN preferences. This is the only newly authorized functional change; preserve all other UI/behavior, measurements, publication/archive contents and production configuration. Do not commit, push, upload or deploy. Earlier byte-identical cleanup findings remain historical evidence, not a claim that the English-default build equals the old build.
+The dashboard, English-first startup and valid saved ID/EN preferences are implemented. The earlier organization publication preserved the existing commit history. The current 2026-10-28 approval covers documentation review and demonstrably unused internal code only: preserve features, visible content/layout, filters, measurements, publication/archive contents, map settings and production configuration. No new functional work, commit, push, upload or deployment is authorized. Earlier byte-identical cleanup findings describe their dated snapshot; current before/after evidence is in the [repository review](PROJECT_REVIEW.md).
 
 ## Completed milestones
 
@@ -20,7 +20,7 @@ The zero-change repository cleanup is complete. A subsequent owner-approved loca
 | Post-UAT technical QA | Historical hardware/software navigation, memory and bandwidth evidence; [report](TECHNICAL_QA_REPORT.md) |
 | R2 upload/integration | Earlier whole-object checksum and localhost Range/CORS evidence; [report](R2_LOCAL_INTEGRATION.md) |
 | Deployment | Owner-confirmed Vercel/R2 custom domain; static-file and bounded Range checks in [deployment record](DEPLOYMENT.md) |
-| Repository maintenance | Latest baseline, cleanup and preservation in [review](PROJECT_REVIEW.md) |
+| Repository maintenance | Renewed review at `13f909f`, safe unused-code cleanup and before/after checks in [review](PROJECT_REVIEW.md); earlier reviews remain archived |
 
 Detailed milestone handoffs are preserved in [implementation history](archive/IMPLEMENTATION_HISTORY.md). Older test counts, zooms and deployment restrictions there are stage-specific evidence.
 

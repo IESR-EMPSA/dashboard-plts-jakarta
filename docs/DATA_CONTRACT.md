@@ -63,7 +63,25 @@ Raw type labels also include `HUNIAN`, `NON HUNIAN`, `PEMERINTAHAN`; map these e
 - `annual_kwh = capacity_kwp × pvout_1` where PVOUT exists.
 - `annual_gwh = annual_kwh / 1,000,000` where PVOUT exists.
 - Annual generation is a **model estimate**, not metered production.
-- Solar resource: Global Solar Atlas PVOUT GeoTIFF currently based on 2019 dataset; verify year, version, licensing, and metadata in publication docs.
+- Solar resource: attributed to Global Solar Atlas PVOUT. The original GeoTIFF, its metadata and sampling log are not available in the supplied repository inputs. Exact raster version, climate-reference period, daily/annual aggregation, sampling method and reuse terms remain unverified. A reference to a 2019 publication does not establish the raster's vintage or an observation year.
+
+## Stored-attribute research verification
+
+The 2026-10-27 read-only research review checked numeric attributes in `data/raw/buildings_eligible_pvout.gpkg`, the same source fingerprint documented in [archive repair](ARCHIVE_REPAIR_REPORT.md#authoritative-source-verification). It did not rerun buffers, geometry union, solar modeling or spatial assignment. The 2026-10-28 maintenance audit reuses that evidence after confirming the GeoPackage SHA-256 is unchanged.
+
+| Measure across 1,470,399 eligible records | Stored-attribute sum |
+|---|---:|
+| Original footprint `area_m2` | 270,949,338.0788842 m² (270.949338 km²) |
+| Post-setback `setback_m2` | 196,501,364.7893479 m² |
+| Modeled usable area `useable_m2` | 89,413,281.56603178 m² |
+
+These are sums of stored attributes, not overlap-free union coverage, surveyed roof surfaces or installed panel area. They describe eligible records only. All stored eligible records meet `setback_m2 >= 28`; the minimum is 28.000080574303865 m². This does not independently verify the buffer algorithm or excluded/ineligible records.
+
+The review found zero maximum numeric deviation for the documented RUF, capacity and energy formulas on the applicable non-null stored attributes. Numerical agreement does not certify the source workflow, the annual unit of the missing source raster or the physical assumptions.
+
+There are **143 eligible records with `useable_m2 > setback_m2`**, with a largest individual excess of 107.65039987623692 m². Example UID `2280`: footprint 139.3325764243491 m², post-setback 29.888964743353426 m² and modeled usable area 45.97975022003521 m². This follows the current rule of applying RUF to the original footprint; it is a methodology discussion, not evidence of a corrupted attribute. Do not clamp/recalculate those records or alter published totals during application maintenance.
+
+The result remains a footprint-based screening estimate. Roof planes, slope/aspect, local shading, obstructions, material/structural condition, grid connection and economic feasibility are not independently verified for every building. Existing PV has not been spatially reconciled, so remaining potential is undetermined. Unique IDs and delivery QA do not establish absence of physical duplicates or overlaps.
 
 ## Published JSON schemas
 

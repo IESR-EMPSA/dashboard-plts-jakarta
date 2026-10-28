@@ -17,6 +17,8 @@ Manual UAT/deployment are owner-confirmed. This audit only reads public endpoint
 
 ## Build and configuration
 
+The owner-authorized source publication to the IESR-EMPSA organization was completed on 2026-10-28 with all 11 commits through `13f909f` preserved. Adding a Git remote or changing a local branch's upstream does not migrate the Vercel Git connection or R2 settings. The existing production integration was not changed or recertified by that push; remote labels are local checkout configuration, not application configuration.
+
 The repository builds with `pnpm build`, emitting static files to `dist/`. Tested local tools are Node 24.19.0 and pnpm 12.4.1. Exact Vercel dashboard overrides/runtime settings were not inspected.
 
 ```dotenv

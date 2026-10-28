@@ -1,106 +1,94 @@
-# Repository audit and behavior-preserving cleanup
+# Repository maintenance review — 2026-10-28
 
-> Scope note: this report records the cleanup snapshot before the subsequent owner-approved English-first language change. Its byte-identical build/pre-commit findings apply to that cleanup stage. Current source behavior is documented in [localization](LOCALIZATION.md); the English default is a separate intentional functional change and has not been deployed by this follow-up.
+Baseline: 13f909f on main; the worktree was clean. Manual UAT and deployment were already owner-approved. This pass covers documentation corrections and demonstrably unused internal code. No stage, commit, push, upload, deployment or production-configuration change is performed.
 
-Date: 2026-10-27. Baseline commit: `76096bc` (`main`); the worktree was clean before this audit. Manual UAT and successful Vercel/R2 custom-domain deployment are owner-confirmed.
+The [2026-10-27 review](archive/PROJECT_REVIEW_2026-10-27.md) remains preserved. Its byte-identical shipping comparison applies to that older snapshot.
 
-## Outcome and boundary
+## Outcome
 
-Cleanup is limited to demonstrably unused internal code, one existing test's formatter target, Git ignore protection and documentation. No component/template, style, catalog, map algorithm, dataset, producer, package/lockfile, Vite/environment or hosting configuration was changed. No commit, stage, push, upload, deployment or history rewrite was performed.
+The approved content, layout, English-first/saved-locale behavior, filters, charts, details, map settings, opacity and numerical/null semantics are retained. No component, data service, model calculation, dependency or publication dataset is removed or replaced.
 
-The strongest preservation check is **byte-identical shipping output**: all 17 `dist/` files retain their baseline SHA-256 hashes. The same 17 baseline files were independently read from production and matched local bytes. All nine publications and 15 original/processed GIS files also retain their hashes. This preserves the deployed JavaScript, styles, worker, branding and data rather than relying on a claim based only on passing unit tests.
+All 63 tests, TypeScript, publication checks and production build pass before and after cleanup. Focused actual-app Chrome checks match before/after, with zero exceptions or critical console errors. Compared desktop header/title/metrics and mobile navbar pixels are identical. All 15 GIS source/archive hashes and protected publication/configuration/producer fingerprints are unchanged.
 
-## Audit findings and cleanup
+## Code audit
 
-- The source/import audit covered 52 initial TS/JS/Vue files across application, scripts and tests, including 268 static/dynamic import declarations. Every Vue component is reachable, including the async map and loading/error components. After cleanup all remaining application modules are reachable through the app graph.
-- `src/utils/presentation.ts` was outside the application graph. Its `shortRegionName` had no consumers; `numberId` was used only by a legacy test. Remove this obsolete module and point the existing four formatting assertions at the actual `createI18n().n` API. All 63 tests remain.
-- `solarDataService.ts` re-exported `asDataError` without any consumer of that re-export. Remove the redundant import/export; the real implementation and its direct consumers in `dataError.ts` remain unchanged.
-- TypeScript's unused-local/parameter checks pass. A conservative scan of all 13 JS/MJS files found no unused import candidates; syntax checks pass. Candidate exported types/constants used within their own modules or documented contracts are retained.
-- Dev-only `window.__SOLAR_MAP__`, dynamically chosen icons/catalog keys, runtime error logging and renderer/fallback components are intentional. Historical archive diagnostics and their HTML/JS pages are referenced by evidence and are retained, not deleted as experiments.
-- Extend ignores for GeoPackage journals, QGIS/shapefile sidecars and private key/certificate bundles. Existing raw/processed data, local environments, provider state, dependencies, build output and QA artifacts were already ignored. No local GIS input/archive was deleted or moved.
-- No currently tracked file is ignored; no original GIS archive, private environment, provider credential directory or build output is tracked. A limited current-tree credential-pattern scan found no recognizable access-key/private-key patterns. This is not a full historical secret-forensics certification.
+- The inventory covers 51 TS/JS/Vue files and 267 import declarations. Every application module remains reachable, including the async map. No unused whole component/module was established.
+- Remove App.vue's empty title span and the orphan colour selector in src/style.css. The title's period had already been removed by the owner; this maintenance does not change its text.
+- Remove only the unused expand, check and eye paths from AppIcon.vue. All 14 remaining paths and the info fallback are unchanged. The sole dynamic icon expression is card.icon; its four KPI values are retained.
+- Update a selector comment that still described the implemented building filter as future work. Its emitted logic is unchanged.
+- qa-app.mjs still expected a period in its full-route heading assertion. Match the approved title and check it at common startup so focused runs cover it too. Product behavior is unchanged.
+- TypeScript unused-local/parameter checks pass. All 13 JS/MJS files pass syntax checks; no unused JS import candidate was found.
+- Keep the dynamically selected error.network/error.http/error.timeout messages, internal/public contract types, constants used within their own modules, the dev-only map hook and error diagnostics.
+- All 10 direct dependencies remain required: three runtime, seven development. No dependency install/removal/upgrade or package/lockfile change. A fresh registry vulnerability audit was not performed.
+- Keep historical conversion, geometry and repair scripts and their diagnostic HTML/JS for reproducibility.
 
-## Documentation review
+## Documentation
 
-The root README is the setup/development/testing/deployment entry point; START_HERE now directs readers there. New deployment documentation records the owner-provided production URLs and measured read-only checks, without inventing private Vercel settings. The index distinguishes current guides from historical evidence and lists script requirements/write boundaries.
+Current guides now distinguish implemented data/map services from historical milestone handoffs, describe the five test files, label original 55/41-test snapshots, identify all three building rendering layers and separate source publication from hosting configuration.
 
-Current guides now describe the deployed custom domain, three building layers, 80% initial opacity, actual component ownership, inline mobile filters, current provider setup and supported chart/filter scopes. The obsolete placeholder JSON in DATA_CONTRACT was replaced with actual envelope/type references. The data contracts and producer code themselves are untouched.
+The data contract records the prior read-only research review's area sums and 143 modeled-usable-area/post-setback cases. Its GeoPackage fingerprint matches the current source. This pass reuses that evidence without rerunning GIS processing or changing formulas/statistics. Exact PVOUT raster vintage, temporal aggregation and sampling remain unverified; a 2019 reference does not establish the missing raster's version.
 
-The large milestone handoff history and previous review are archived with relative links repaired. Original statistical/repair/geometry/QA values remain intact. Dated reports receive explicit scope notices so earlier "not deployed", old zooms or test counts are not mistaken for current status. Model/topology/vintage/rights limitations are retained rather than silently declared resolved by deployment.
+README, the supplied pipeline illustration and the design guide were already consistent and remain unchanged. Historical numerical/QA observations are retained; old no-deployment/zoom statements are not relabeled as current checks.
 
-## File changes / commit manifest
-
-| Action | Path(s) | Reason |
+| Action | Files | Reason |
 |---|---|---|
-| Delete | `src/utils/presentation.ts` | Obsolete test-only formatter wrapper and unused name helper |
-| Modify | `src/services/solarDataService.ts` | Remove unused re-export/import only |
-| Modify | `tests/map-integration.test.ts` | Preserve four assertions using the real app formatter |
-| Modify | `.gitignore` | Protect future local GIS sidecars and private keys |
-| Comment only | `.env.example` | Point readers to the active deployment guide; the environment value remains empty |
-| Modify | `AGENTS.md` | Replace stale localhost-only scope with deployed, zero-change maintenance boundary |
-| Rewrite | `README.md`, `START_HERE.md` | One clear entry point and accurate setup/test/deployment guidance |
-| Add | `docs/README.md` | Guide/evidence index and retained script inventory |
-| Add | `docs/DEPLOYMENT.md` | Actual production record and bounded verification limits |
-| Replace with current status | `docs/IMPLEMENTATION_PLAN.md` | Concise completed milestones and current maintenance constraints |
-| Archive former plan | `docs/archive/IMPLEMENTATION_HISTORY.md` | Preserve detailed stage/UI history rather than duplicate it in current guides |
-| Replace with current review | `docs/PROJECT_REVIEW.md` | This report, evidence, file manifest and commit proposal |
-| Archive former review | `docs/archive/PROJECT_REVIEW_2026-10-26.md` | Retain previous cleanup evidence with a clear date/scope |
-| Update | `docs/ARCHITECTURE.md` | Actual runtime modules, deployed delivery, masking/highlight layers and fallback |
-| Update | `docs/DATA_CONTRACT.md` | Correct schema documentation and distinguish verified exports from remaining certification |
-| Update | `docs/DECISIONS_AND_RISKS.md` | Deployment is complete; evidence/budget/source risks remain distinct |
-| Update | `docs/DESIGN_SYSTEM.md` | Actual components/layout instead of proposed nonexistent components/features |
-| Update | `docs/PRD.md` | Current header/chart scope and deployed status, no new product requirements |
-| Update | `docs/FRONTEND_DATA_LAYER.md` | Current adapter use/provider example, labeled milestone-2 evidence |
-| Scope notice | `docs/LOCALIZATION.md` | Separate current guide from original feature-stage verification counts |
-| Scope notice | `docs/DATA_STAGE_REPORT.md`, `docs/GEOMETRY_QA.md` | Preserve original preparation/type-0 investigations as dated evidence |
-| Scope notice / clarify old setup | `docs/LOCAL_DEMO.md` | Remove contradictory "z13–18 pending" guidance while preserving original demo observations |
-| Scope notice | `docs/ARCHIVE_Z13_18.md`, `docs/ARCHIVE_REPAIR_REPORT.md` | Keep conversion/repair evidence and resolved activation chronology |
-| Scope notice | `docs/TECHNICAL_QA_REPORT.md`, `docs/R2_LOCAL_INTEGRATION.md` | Historical readiness/r2.dev measurements are not current deployment or custom-domain benchmarks |
+| Modify | src/App.vue, src/style.css | Remove empty title markup and its unused selector |
+| Modify | src/components/AppIcon.vue | Remove three proven unused icon paths |
+| Comment only | src/selectors/dashboard.ts | Describe the current filter consumer |
+| Modify | scripts/qa-app.mjs | Match and verify the approved heading |
+| Modify | AGENTS.md, docs/IMPLEMENTATION_PLAN.md | Current maintenance boundary and completed earlier approvals |
+| Modify | docs/ARCHITECTURE.md, docs/FRONTEND_DATA_LAYER.md | Current integration, API and test-command responsibilities |
+| Modify | docs/LOCALIZATION.md | Current suite versus original feature-stage acceptance |
+| Modify | docs/DEPLOYMENT.md | Completed organization publication; no implied hosting migration |
+| Modify | docs/DATA_CONTRACT.md, docs/DECISIONS_AND_RISKS.md | Source-verification limits and research observations |
+| Modify | docs/PROJECT_REVIEW.md, docs/README.md | Current review and evidence index |
+| Add archive | docs/archive/PROJECT_REVIEW_2026-10-27.md | Preserve the former report with relocated links/banner |
 
-`docs/DATA_PIPELINE.md`, the repair CSV ledger, publication files, crosswalks and producer files remain unchanged. `.tools/` audit helpers, `data/processed/qa/` evidence, `dist/` and local environments are ignored and **not commit candidates**.
+No whole source file is deleted. Raw data, archive/rollback files, publication outputs, crosswalks, producer files, HTML metadata, message catalog, images, dependencies, Vite/TypeScript settings, environment and Git remotes/upstream are retained.
 
-## Before / after verification
+## Before / after checks
 
-| Check | Before cleanup | After cleanup |
+| Check | Before | After |
 |---|---|---|
-| `pnpm test` | 63 passed, 0 failed | 63 passed, 0 failed |
-| `pnpm typecheck` | All three projects passed | All three projects passed |
-| `pnpm data:check` | Nine files, original release | Same nine files and release |
-| `pnpm build` | Passed; existing MapLibre size advisory | Passed; same advisory and shipping bytes |
-| Browser `--layer-controls-only` | Passed ID/EN, 320/390/1440 px | Same checks and inspected building ID; no critical errors |
-| Dist/publication/config preservation | SHA-256 baseline recorded | 53 protected fingerprints unchanged |
-| Original/processed GIS preservation | 15 files, 9,225,542,159 bytes fingerprinted | All 15 hashes unchanged; no source/rollback deletion |
-| Navbar visual comparison | Six screenshots recorded | First 50 pixel rows identical in all six comparisons |
-| Dependency audit | All 10 direct dependencies required; 0 reported advisories | Package/lock/workspace files unchanged |
-| Markdown links / Git whitespace | No broken local file links in initial tree | Final local file-link/whitespace checks pass |
+| pnpm test | 63 passed, 0 failed | 63 passed, 0 failed |
+| pnpm typecheck | Three projects pass | Three projects pass |
+| pnpm data:check | Nine outputs, original release | Same outputs and release |
+| pnpm build | Pass; existing MapLibre size advisory | Pass; same advisory |
+| Focused Chrome | ID/EN, 320/390/1440 px, real building 386807 | Identical checks/ID; no exceptions or critical console errors |
+| Pixel comparison | Six baseline screenshots | Zero changed bytes: desktop first 220 rows, mobile first 50 rows |
+| Protected fingerprints | Baseline captured | 40 unchanged, including publication/producer/config/environment and branding |
+| Original/processed GIS | 15 files, 9,225,542,159 bytes | All 15 SHA-256 values unchanged |
+| JS/MJS | 13 syntax checks pass; no unused import candidate | Retained scripts pass |
+| Markdown/archive | Initial link scan passes | Final local-link/anchor and archived-text checks recorded separately |
 
-Validated release remains `dki-solar-2edaec0ca52d964b`: 1,747,249 analyzed buildings, 1,470,399 eligible, 1,466,275 with PVOUT and 4,124 without. Exact source totals and units remain in DATA_CONTRACT; no statistics were regenerated.
+The protected set includes the public release, raw/crosswalk/processed GIS, package/lock/workspace, Vite/TypeScript configuration, .env.local, source logo and three publication-producer inputs. GIS files are fingerprinted, not regenerated. Data version remains dki-solar-2edaec0ca52d964b: 1,747,249 analyzed, 1,470,399 eligible, 1,466,275 covered and 4,124 missing-PVOUT buildings.
 
-Additional checks: all 13 retained JS/MJS files pass `node --check`; dynamic imports remain present; ignore-rule examples protect private files without ignoring public data, favicon/logo or `.env.example`. Production frontend returns 200; a 16 KiB PMTiles request returns 206 with matching local prefix bytes and exact production-origin CORS. See [deployment](DEPLOYMENT.md) for details.
+Shipping JS/CSS hashes change because unused icon data, markup and CSS were removed; Vite rewrites chunk import references. This review does not claim byte-identical builds. Public data, branding, the MapLibre worker and map-specific CSS retain their bytes. Before/after assertions and bounded pixel comparisons provide the presentation/interaction evidence.
 
-## Limits and retained technical debt
+## Limits and retained debt
 
-- Focused Chrome/software-WebGL checks were run before/after; full functional UAT, archive conversion/repair, exhaustive model/topology QA and a new stress/performance certification were not repeated. Software/browser timing differences are not claimed as performance changes.
-- Visual pixel comparison covers only the first 50 rows of the six screenshots. Whole-map screenshots can differ with asynchronous external basemap/tile loading. Shipping JS/CSS/worker/data bytes are identical; all focused check results match. Ordinary canceled imagery requests occur during basemap switches; browser exceptions/critical console errors are zero.
-- The MapLibre lazy chunk/worker and dense z13 tiles remain relatively large; historical memory/bandwidth observations are retained. No chunk splitting, cache, geometry or network-policy optimization was performed.
-- Large map/QA files, compressed CSS and duplication between standalone diagnostic harnesses remain possible future readability work. Restructuring them was avoided under the strict zero-change/output boundary.
-- `qa-r2-integration.mjs` still targets the historical r2.dev host in remote mode. It is documented as a retained historical tool, not advertised as testing the custom production domain. Changing its CLI/default requires separate work; production settings were not changed to accommodate it.
-- Node/pnpm versions are documented but not newly pinned through package/config changes. No dependency was removed because all were required, and none was installed/upgraded. The registry audit's zero findings are a dated result, not a permanent security guarantee.
-- Producer files (`scripts/prepare-data.ts`, `scripts/lib/data-pipeline.ts`, `src/types/solar.ts`) participate in publication fingerprints. Even cosmetic changes can require a new compatible data release; no such changes were made.
-- Original solar-model/topology/source-vintage/rights certification, wider device/accessibility/network budgets and private hosting dashboard settings remain outside what this cleanup verifies. Successful deployment does not overwrite the publication's verification metadata.
+- This is focused local Chrome/software-WebGL coverage. Asynchronous map/provider pixels are not compared; ordinary canceled imagery requests occur during switches. Full UAT, stress, physical devices, remote performance and accessibility certification are not repeated.
+- No production endpoint or hosting dashboard is recertified. Credentials, DNS, CORS and hosting settings are untouched. The earlier organization push did not migrate the Vercel Git connection; a local build does not establish deployed release contents.
+- Historical qa-r2-integration.mjs retains its r2.dev target and is labeled accordingly. Current custom-domain configuration is preserved.
+- Dense tiles, large MapLibre/worker chunks, boundary transfer and device/network budgets remain documented. No caching, geometry, layering or network optimization is attempted.
+- Source topology/overlap, vintage/rights, exact PVOUT metadata and physical/grid/economic suitability remain research questions. The 143 area-reference cases are not silently fixed.
+- Producer source/publication types participate in data versioning. Their stage-oriented comments are preserved to avoid an unauthorized release change.
+- No broad refactoring, compressed-CSS reformatting, runtime API narrowing, Git history rewrite or dependency upgrade.
 
-## Evidence and commit preparation
+## Reproduction and handoff
 
-Ignored evidence lives under `data/processed/qa/repository-cleanup/`: before/after fingerprints, preservation result, production static-file hashes/Range headers, dependency audit, static import/link audits, after-check logs, before/after browser reports/screenshots and browser comparison. Helpers used solely to collect/compare this audit stay under ignored `.tools/`; routine reproduction commands are the checked-in commands listed above.
+Use the existing pnpm test, pnpm typecheck, pnpm data:check and pnpm build commands. The standard focused browser entry remains node scripts/qa-app.mjs --layer-controls-only. It uses the preserved local archive and an isolated server, without replacing the user's main Vite server or environment file.
 
-Only the paths in the file-change table should enter the proposed maintenance commit. Keep all private GIS/QA/environment files ignored. No commit or production action has been performed.
+Ignored evidence is isolated at data/processed/qa/maintenance-20261028/: before/after logs/fingerprints, static inventory, cleanup-evidence.json, research-evidence.json, browser-before/, browser-after/, pixel comparison, preservation and final documentation checks. Temporary drivers stay under ignored .tools/. Earlier QA directories are not overwritten.
 
-```text
-chore(repo): remove unused helpers and refresh project documentation
+Only reviewed source/script/documentation changes belong in a future commit. Exclude private inputs, QA output, tools, environment and builds. No stage, commit, push, upload or deployment is performed.
 
-- Remove obsolete presentation helpers and an unused service re-export
-- Keep existing formatting coverage on the application i18n API
-- Document deployed Vercel/R2 delivery and archive historical handoffs
-- Extend ignore rules while preserving GIS sources and published data
-- Verify unchanged build/data fingerprints and before/after checks
-```
+Suggested message:
+
+    chore: remove unused presentation code and refresh maintenance documentation
+
+    - Remove empty title markup, an orphan style and unused icon paths
+    - Align browser QA with the approved heading
+    - Refresh current data, localization and deployment guides
+    - Preserve prior audit evidence and clarify research verification limits
+    - Verify unchanged data/archive fingerprints and before/after checks

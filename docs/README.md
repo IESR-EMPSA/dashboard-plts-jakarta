@@ -33,7 +33,8 @@ User-facing methodology is implemented in `src/components/methodology/Methodolog
 | [Technical QA](TECHNICAL_QA_REPORT.md) | Historical stress results and limits |
 | [R2 localhost integration](R2_LOCAL_INTEGRATION.md) | Historical r2.dev/DNS/CORS and paired performance observations |
 | [Implementation history](archive/IMPLEMENTATION_HISTORY.md) | Superseded detailed handoffs and UI follow-ups |
-| [Previous review](archive/PROJECT_REVIEW_2026-10-26.md) | Earlier starter cleanup and its then-current evidence |
+| [2026-10-27 review](archive/PROJECT_REVIEW_2026-10-27.md) | Original behavior-preserving cleanup, shipping-byte comparison and deployment probes |
+| [2026-10-26 review](archive/PROJECT_REVIEW_2026-10-26.md) | Earlier starter cleanup and its then-current evidence |
 
 Retain these reports and the original local GIS/rollback artifacts. Do not relabel older measurements as current production certification.
 

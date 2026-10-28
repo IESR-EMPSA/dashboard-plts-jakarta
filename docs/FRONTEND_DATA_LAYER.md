@@ -1,13 +1,13 @@
-# Milestone 2 — frontend data services and filter semantics
+# Frontend data services and filter semantics
 
 > Current data API guide; the verification/handoff section preserves the original milestone-2 snapshot. For current setup/deployment and the latest checks, use [README](../README.md), [deployment](DEPLOYMENT.md) and [repository review](PROJECT_REVIEW.md).
 
-This is the milestone 2 handoff. The data APIs remain unchanged and are now consumed by the milestone 3 application; see LOCAL_DEMO.md for current UI, map, browser evidence and release gates.
+These APIs were introduced in milestone 2 and are consumed by the implemented dashboard and MapLibre map. Use [architecture](ARCHITECTURE.md), [deployment](DEPLOYMENT.md) and the [latest review](PROJECT_REVIEW.md) for current integration and maintenance status. The original milestone-2 test results are retained in the historical section below.
 
 ## Status and scope
-Implemented and verified against the existing generated release `dki-solar-2edaec0ca52d964b`. No dependencies were installed. Vue 3 reactivity/provide/inject, fetch, Web Crypto and the existing Node test runner are sufficient. The starter UI, original publication contracts, generated data, raw inputs, MBTiles and PMTiles remain unchanged.
+The services validate the existing release `dki-solar-2edaec0ca52d964b`. They use Vue 3 reactivity/provide/inject, fetch, Web Crypto and the existing Node test runner. They do not regenerate publication files, original inputs or building archives.
 
-This milestone creates no application map, layer, PMTiles protocol integration, backend or dashboard component. Milestone 3 remains separately approved work; its required Polygon predicate and worker-delivery checks remain in GEOMETRY_QA.md.
+MapLibre/PMTiles integration and dashboard components are implemented in the modules described by the architecture guide. The data layer remains independent of the map renderer; summary totals never depend on loaded tiles.
 
 ## Implemented files
 | File | Responsibility |
@@ -16,14 +16,14 @@ This milestone creates no application map, layer, PMTiles protocol integration, 
 | src/services/solarDataService.ts | Typed release loading, in-flight deduplication, successful-response cache, failed-request eviction, request timeout and lazy boundaries |
 | src/services/dataValidation.ts | Runtime schemas/units, provenance compatibility, count/rate/null consistency, summary reconciliation, crosswalk joins, category aliases and normalized geometry checks |
 | src/services/dataError.ts | Structured network, HTTP, timeout, parse, integrity, version, validation, filter and building errors |
-| src/services/normalization.ts | Exact crosswalk resolution and future tile-property adapter |
+| src/services/normalization.ts | Exact crosswalk resolution and the current building-detail property adapter |
 | src/services/boundaryGeoJson.ts | Mutable renderer-owned GeoJSON copy with stable feature IDs; keeps cached data immutable |
-| src/selectors/dashboard.ts | DKI/region/district/type KPIs, explicitly scoped marginal charts and raw category labels for future tile filtering |
+| src/selectors/dashboard.ts | DKI/region/district/type KPIs, explicitly scoped marginal charts and raw category labels for building filters |
 | src/stores/dashboard.ts | Per-app centralized Vue state, resource states, filter actions, retry/refresh and stale-request protection |
 | src/composables/useDashboard.ts | Typed injection key and consumer composable |
 | src/utils/format.ts | Null-safe display conversion and consistent numeric formatting |
 | tests/frontend-data.test.ts | 25 tests against actual publication files, plus isolated negative cases |
-| package.json | Runs both test files; original dependencies/lockfile preserved |
+| package.json | Runs five test files covering data, services, map behavior, localization and repair; no dependency is added by these APIs |
 
 ## Loading and release integrity
 `createSolarDataService()` defaults to `/data/`. Supply `baseUrl` for another public directory or a Vite base path; supply fetch/requestTimeoutMs for controlled testing. Timeout defaults to 15 seconds per request. Browser checksum validation requires Web Crypto on HTTPS or localhost.
@@ -129,4 +129,4 @@ For generation, use gwhToTwh and preserve null. Every future generation visualiz
 - An additional in-memory Vite browser bundle of the data/store/composable/adapter/format entry points passes, with Vue external and no output files written. This exercises code not yet imported by the starter app.
 - Lint is not configured. No map/protocol, device interaction or remote Range/CORS test is claimed for this milestone.
 
-Next: milestone 3 MapLibre and PMTiles integration, using the existing validated archive, an explicit Polygon predicate on every building rendering layer, correct worker delivery, and local HTTP Range tests. Source rights/model/topology, production performance and remote hosting remain separate gates. No archive regeneration, upload, deployment, commit or push occurred.
+At that handoff, MapLibre/PMTiles integration was the next milestone; it is now implemented and deployed. The original handoff performed no archive regeneration, upload, deployment, commit or push. Current delivery is recorded separately in [deployment](DEPLOYMENT.md); source-model/topology/rights and broader performance limits remain explicit.

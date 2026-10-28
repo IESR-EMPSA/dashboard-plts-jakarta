@@ -616,6 +616,7 @@ try {
   await waitFor('!!window.__SOLAR_MAP__', 'Vue / MapLibre initialization')
   checks.firstVisitLanguage = await evaluate(`({language:document.documentElement.lang,englishSelected:document.querySelector('[data-testid="language-en"]').getAttribute('aria-pressed'),title:document.title,description:document.querySelector('meta[name="description"]').content})`)
   assert.deepEqual(checks.firstVisitLanguage,{language:'en',englishSelected:'true',title:messages['app.title'].en+' | IESR',description:messages['app.description'].en})
+  assert.equal(await evaluate(`document.querySelector('h1').textContent`), messages['app.title'].en)
   assert.deepEqual(await kpiValues(),expectedKpis(regions.overall,'en'))
   await checkEnglishText()
   // Existing comparison scenarios use Indonesian explicitly, independent of
@@ -641,7 +642,7 @@ try {
   await setLanguage('en')
   await checkEnglishText()
   assert.deepEqual(await kpiValues(), expectedKpis(regions.overall, 'en'))
-  assert.equal(await evaluate(`document.querySelector('h1').textContent`), messages['app.title'].en + '.')
+  assert.equal(await evaluate(`document.querySelector('h1').textContent`), messages['app.title'].en)
   assert.equal(await evaluate(`document.title`), messages['app.title'].en + ' | IESR')
   assert((await evaluate(`document.querySelector('.maplibregl-ctrl-attrib').textContent`)).includes('Analysis: IESR'))
   assert((await evaluate(`[...document.querySelectorAll('.admin-map-label')].map(e=>e.textContent).join(' ')`)).includes('THOUSAND ISLANDS'))
